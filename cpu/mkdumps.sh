@@ -7,9 +7,10 @@ dodumps()
 #include <idc.idc>
 
 static main(void) {
-	GenerateFile(OFILE_IDC,fopen("$1.idc","w"), 0, 0x100000, 0);
-	GenerateFile(OFILE_LST,fopen("mkdumps.lst","w"), 0, 0x100000, 0);
-	GenerateFile(OFILE_ASM,fopen("mkdumps.asm","w"), 0, 0x100000, 0);
+	GenerateFile(OFILE_IDC,fopen("$1.idc","w"), 0, BADADDR, 0);
+	GenerateFile(OFILE_LST,fopen("mkdumps.lst","w"), 0, BADADDR, GENFLG_ASMTYPE);
+	GenerateFile(OFILE_ASM,fopen("mkdumps.asm","w"), 0, BADADDR, GENFLG_ASMTYPE);
+
 	Exit(0);
 }
 EOF
@@ -21,4 +22,4 @@ EOF
 
 dodumps altos586-v13
 dodumps altos586-a22
-rm -f mkdumps.asm mkdumps.lst mkdumps.log
+rm -f mkdumps.asm mkdumps.lst mkdumps.log mkdumps.idc

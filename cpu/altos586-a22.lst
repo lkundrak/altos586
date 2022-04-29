@@ -1,3 +1,153 @@
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 CHAN_REGS	 struc ; (sizeof=0x16)
+00000000 CHAN_PARM	 dw ?			 ; Channel Parameter Register
+00000002 CHAN_STAT	 dw ?			 ; Channel Status Register
+00000004 CHAN_CMD	 db ?			 ; Channel Command Register
+00000005 CHAN_TX_LO	 db ?			 ; Transmit Data Buffer	Address	Register LO
+00000006 CHAN_TX_MID	 db ?			 ; Transmit Data Buffer	Address	Register MID
+00000007 CHAN_TX_HI	 db ?			 ; Transmit Data Buffer	Address	Register HI
+00000008 CHAN_TX_LEN	 dw ?			 ; Transmit Data Buffer	Length Register
+0000000A CHAN_RX_LO	 db ?			 ; Receive Data	Buffer Address Register	LO
+0000000B CHAN_RX_MID	 db ?			 ; Receive Data	Buffer Address Register	MID
+0000000C CHAN_RX_HI	 db ?			 ; Receive Data	Buffer Address Register	HI
+0000000D CHAN_RX_LEN	 dw ?			 ; Receive Data	Buffer Length Register
+0000000F CHAN_RX_IN	 dw ?			 ; Receive Buffer Input	Pointer	Register
+00000011 CHAN_RX_OUT	 dw ?			 ; Receive Buffer Output Pointer Register
+00000013 CHAN_RX_TTY	 db ?			 ; TTY Receive Register
+00000014 CHAN_RATE	 dw ?			 ; Selectable Rate Register
+00000016 CHAN_REGS	 ends
+00000016
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 IOP8089_SCP	 struc ; (sizeof=0x6)
+00000000 BUS_TYPE	 db ?			 ; 1 = 16-bit, 0 = 8-bit
+00000001 _UNUSED	 db ?
+00000002 SCB_OFF	 dw ?
+00000004 SCB_SEG	 dw ?
+00000006 IOP8089_SCP	 ends
+00000006
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 IOP8089_SCB	 struc ; (sizeof=0x6)
+00000000 SOC		 db ?
+00000001 _UNUSED	 db ?
+00000002 CB_OFF		 dw ?
+00000004 CB_SEG		 dw ?
+00000006 IOP8089_SCB	 ends
+00000006
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 IOP8089_CB	 struc ; (sizeof=0x8)
+00000000 CCW		 db ?
+00000001 BUSY		 db ?
+00000002 PB_OFF		 dw ?
+00000004 PB_SEG		 dw ?
+00000006 _UNUSED	 dw ?
+00000008 IOP8089_CB	 ends
+00000008
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 HD_PARM_BLOCK	 struc ; (sizeof=0x10)
+00000000 CMD		 db ?
+00000001 STAT		 db ?
+00000002 CYL_LO		 db ?
+00000003 CYL_HI		 db ?
+00000004 HEAD_DRV	 db ?
+00000005 SEC		 db ?
+00000006 BYTECNT_LO	 db ?
+00000007 BYTECNT_HI	 db ?
+00000008 BUF_OFF_LO	 db ?
+00000009 BUF_OFF_HI	 db ?
+0000000A BUF_SEG_LO	 db ?
+0000000B BUG_SEG_HI	 db ?
+0000000C _RSVD0		 db ?
+0000000D SEC_DONE	 db ?
+0000000E _RSVD1		 db ?
+0000000F JOB_DONE	 db ?
+00000010 HD_PARM_BLOCK	 ends
+00000010
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 IOP_BLK	 struc ; (sizeof=0xE)
+00000000 CMD		 db ?
+00000001 IOP_00_OR_01	 db ?
+00000002 NUM_256B_CHUNKS db ?
+00000003 IOP_00_OR_01_B	 db ?
+00000004 COUNTER	 db ?
+00000005 SEC_NUM_PER_512B db ?
+00000006 SOME_COUNTER	 db ?
+00000007 IOP_5O		 db ?
+00000008 IOP_FF		 db ?
+00000009 STH_LO		 db ?
+0000000A STH_HI		 db ?
+0000000B STH2_LO	 db ?
+0000000C STH2_HI	 db ?
+0000000D STATUS		 db ?
+0000000E IOP_BLK	 ends
+0000000E
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 FDD_REGS	 struc ; (sizeof=0x10)
+00000000 FLOPPY_COMMAND_REG db ?
+00000001 anonymous_0	 db ?
+00000002 FLOPPY_DATA_BUF_PTR dw	?
+00000004		 db ? ;	undefined
+00000005		 db ? ;	undefined
+00000006		 db ? ;	undefined
+00000007		 db ? ;	undefined
+00000008		 db ? ;	undefined
+00000009		 db ? ;	undefined
+0000000A		 db ? ;	undefined
+0000000B		 db ? ;	undefined
+0000000C SECTOR_SIZE	 dw ?			 ; base	10
+0000000E field_E	 db ?
+0000000F field_F	 db ?
+00000010 FDD_REGS	 ends
+00000010
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 CPU_REGS	 struc ; (sizeof=0x1C)
+00000000 SAVE_AX	 dw ?
+00000002 SAVE_BX	 dw ?
+00000004 SAVE_CX	 dw ?
+00000006 SAVE_DX	 dw ?
+00000008 SAVE_SI	 dw ?
+0000000A SAVE_DI	 dw ?
+0000000C SAVE_DS	 dw ?
+0000000E SAVE_ES	 dw ?
+00000010 SAVE_SS	 dw ?
+00000012 SAVE_SP	 dw ?
+00000014 SAVE_BP	 dw ?
+00000016 SAVE_FLAGS	 dw ?
+00000018 SAVE_IP	 dw ?
+0000001A SAVE_CS	 dw ?
+0000001C CPU_REGS	 ends
+0000001C
+00000000 ; ───────────────────────────────────────────────────────────────────────────
+00000000
+00000000 ; Page	6-12
+00000000 IOPB		 struc ; (sizeof=0x1A)
+00000000 field_0	 dw ?			 ; Monitor reserved
+00000002 field_2	 dw ?			 ; Monitor reserved
+00000004 IOPCODE	 db ?
+00000005 DRIVE		 db ?			 ; Ignored for floppies
+00000006 TRACK		 dw ?
+00000008 HEAD		 db ?
+00000009 SECTOR		 db ?
+0000000A SECTOR_COUNT	 db ?
+0000000B RETURN_STATUS	 db ?
+0000000C STATUS_MASK	 db ?			 ; Not used?
+0000000D RETRIES	 db ?
+0000000E BUF_OFFSET	 dw ?
+00000010 BUF_SEGMENT	 dw ?
+00000012 SECTOR_LEN	 dw ?			 ; Ignored for hard drives
+00000014 field_14	 dw ?			 ; Monitor reserved
+00000016 field_16	 dw ?			 ; Monitor reserved
+00000018 field_18	 dw ?			 ; Monitor reserved
+0000001A IOPB		 ends
+0000001A
+
 ZERO:0000 ;
 ZERO:0000 ; ╔═════════════════════════════════════════════════════════════════════════╗
 ZERO:0000 ; ║	  This file is generated by The	Interactive Disassembler (IDA)	      ║
@@ -11,6 +161,8 @@ ZERO:0000
 ZERO:0000		  .686p
 ZERO:0000		  .mmx
 ZERO:0000		  .model flat
+ZERO:0000
+ZERO:0000		  include altos586-a22.inc
 ZERO:0000
 ZERO:0000 ; ═══════════════════════════════════════════════════════════════════════════
 ZERO:0000

@@ -5,16 +5,248 @@
 // บ                      Licensed to: Freeware version                      บ
 // ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
 //
-
-// DUMP OF RANGE 0..100000
+//
+//      This file should be used in the following way:
+//         - reload executable into IDA with using switch -c
+//         - use File, Load IDC file and load this file.
+//
+//      NOTE: This file doesn't contain all information from the database.
+//
 
 #define UNLOADED_FILE   1
 #include <idc.idc>
 
 static main(void) {
+        GenInfo();              // various settings
+        Segments();             // segmentation
+        Enums();                // enumerations
+        Structures();           // structure types
         Bytes();                // individual bytes (code,data)
         Functions();            // function definitions
         SegRegs();              // segment register values
+}
+
+//------------------------------------------------------------------------
+// General information
+
+static GenInfo(void) {
+
+        DeleteAll();    // purge database
+	SetPrcsr("8086");
+	StringStp(0xA);
+	Tabs(1);
+	Comments(0);
+	Voids(0);
+	XrefShow(2);
+	AutoShow(1);
+	Indent(16);
+	CmtIndent(40);
+	TailDepth(0x10);
+}
+
+//------------------------------------------------------------------------
+// Information about segmentation
+
+static Segments(void) {
+	SetSelector(0X1,0XFE00);
+	SetSelector(0X2,0X0);
+	SetSelector(0X3,0X0);
+	;
+	SegCreate(0X0,0X1000,0X0,0,1,2);
+	SegRename(0X0,"ZERO");
+	SegClass (0X0,"ZERO");
+	SegCreate(0XFE000,0XFFFF0,0X1,0,1,2);
+	SegRename(0XFE000,"FE00");
+	SegClass (0XFE000,"CODE");
+	SegDefReg(0xFE000,"es",0x0);
+	SegDefReg(0xFE000,"ss",0x0);
+	SegDefReg(0xFE000,"ds",0x0);
+	SetSegmentType(0XFE000,2);
+	SegCreate(0XFFFF0,0X100000,0XFFFF,0,1,2);
+	SegRename(0XFFFF0,"FFFF");
+	SegClass (0XFFFF0,"FFFF");
+	LowVoids(0x0);
+	HighVoids(0x10000);
+}
+
+static Enums_0(id) {
+
+	id = AddEnum(-1,"IO_PORT",0x1100000);
+	AddConstEx(id,"Z80_CHAN_ATTN",	0X50,	-1);
+	SetConstCmt(GetConstEx(id,0X50,0,-1),"Z80A I/O Processor Chan att. ",1);
+	AddConstEx(id,"CONTROL_BITS",	0X58,	-1);
+	SetConstCmt(GetConstEx(id,0X58,0,-1),"Control Bits Port - Write Only. ",1);
+	AddConstEx(id,"MMU_ERROR",	0X60,	-1);
+	SetConstCmt(GetConstEx(id,0X60,0,-1),"MMU - Error Address 2 - Read Only. ",1);
+	AddConstEx(id,"MMU_MEMV_CLEAR",	0X70,	-1);
+	SetConstCmt(GetConstEx(id,0X70,0,-1),"MMU - Clear Violation Port",1);
+	AddConstEx(id,"MMU_MEMV",	0X78,	-1);
+	SetConstCmt(GetConstEx(id,0X78,0,-1),"MMU - Violation Port - Read Only. ",1);
+	AddConstEx(id,"PIC_2",	0X80,	-1);
+	SetConstCmt(GetConstEx(id,0X80,0,-1),"PIC - ICW2, ICW3, ICW4, or OCW1",1);
+	AddConstEx(id,"PIC_1",	0X82,	-1);
+	SetConstCmt(GetConstEx(id,0X82,0,-1),"PIC - ICW1, OCW2, or OCW3",1);
+	AddConstEx(id,"PIT_CTRL",	0X101,	-1);
+	SetConstCmt(GetConstEx(id,0X101,0,-1),"PIT - Control Word Register - Write Only",1);
+	AddConstEx(id,"PIT_CNT_2",	0X103,	-1);
+	SetConstCmt(GetConstEx(id,0X103,0,-1),"PIT - Counter 2",1);
+	AddConstEx(id,"PIT_CNT_1",	0X105,	-1);
+	SetConstCmt(GetConstEx(id,0X105,0,-1),"PIT - Counter 1",1);
+	AddConstEx(id,"PIT_CNT_0",	0X107,	-1);
+	SetConstCmt(GetConstEx(id,0X107,0,-1),"PIT - Counter 0",1);
+	AddConstEx(id,"MMU_BASE",	0X200,	-1);
+	AddConstEx(id,"IO_HDD",	0X7000,	-1);
+	SetConstCmt(GetConstEx(id,0X7000,0,-1),"Requests hard disk or memory-to-memory operation",1);
+	AddConstEx(id,"IO_FDD",	0X7008,	-1);
+	SetConstCmt(GetConstEx(id,0X7008,0,-1),"Requests floppy disk operation",1);
+	AddConstEx(id,"IO_TAPE",	0X7010,	-1);
+	SetConstCmt(GetConstEx(id,0X7010,0,-1),"Requests tape operation",1);
+	AddConstEx(id,"BUS_RSVD_0",	0XFF00,	-1);
+	SetConstCmt(GetConstEx(id,0XFF00,0,-1),"Reserved for system bus I/O. ",1);
+	AddConstEx(id,"BUS_RSVD_1",	0XFF80,	-1);
+	SetConstCmt(GetConstEx(id,0XFF80,0,-1),"Reserved for system bus I/O. ",1);
+	id = AddEnum(-1,"FDC_COMMANDS",0x1100000);
+	AddConstEx(id,"FDC_BUSY",	0X80,	-1);
+	AddConstEx(id,"FDC_FLOPPY_PARAMS",	0X87,	-1);
+	AddConstEx(id,"FDC_RUN_IO",	0X88,	-1);
+	return id;
+}
+
+//------------------------------------------------------------------------
+// Information about enum types
+
+static Enums(void) {
+        auto id;
+	id = Enums_0(id);
+}
+
+static Structures_0(id) {
+
+	id = AddStrucEx(-1,"CHAN_REGS",0);
+	id = AddStrucEx(-1,"IOP8089_SCP",0);
+	id = AddStrucEx(-1,"IOP8089_SCB",0);
+	id = AddStrucEx(-1,"IOP8089_CB",0);
+	id = AddStrucEx(-1,"CPU_REGS",0);
+	id = AddStrucEx(-1,"FDC_REGS",0);
+	id = AddStrucEx(-1,"IO_BLOCK",0);
+	id = AddStrucEx(-1,"IOP8089_PB",0);
+	
+	id = GetStrucIdByName("CHAN_REGS");
+	AddStrucMember(id,"CHAN_PARM",	0X0,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X0,	"Channel Parameter Register",	1);
+	AddStrucMember(id,"CHAN_STAT",	0X2,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X2,	"Channel Status Register",	1);
+	AddStrucMember(id,"CHAN_CMD",	0X4,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X4,	"Channel Command Register",	1);
+	AddStrucMember(id,"CHAN_TX_LO",	0X5,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X5,	"Transmit Data Buffer Address Register LO",	1);
+	AddStrucMember(id,"CHAN_TX_MID",	0X6,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X6,	"Transmit Data Buffer Address Register MID",	1);
+	AddStrucMember(id,"CHAN_TX_HI",	0X7,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X7,	"Transmit Data Buffer Address Register HI",	1);
+	AddStrucMember(id,"CHAN_TX_LEN",	0X8,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X8,	"Transmit Data Buffer Length Register",	1);
+	AddStrucMember(id,"CHAN_RX_LO",	0XA,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XA,	"Receive Data Buffer Address Register LO",	1);
+	AddStrucMember(id,"CHAN_RX_MID",	0XB,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XB,	"Receive Data Buffer Address Register MID",	1);
+	AddStrucMember(id,"CHAN_RX_HI",	0XC,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XC,	"Receive Data Buffer Address Register HI",	1);
+	AddStrucMember(id,"CHAN_RX_LEN",	0XD,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0XD,	"Receive Data Buffer Length Register",	1);
+	AddStrucMember(id,"CHAN_RX_IN",	0XF,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0XF,	"Receive Buffer Input Pointer Register",	1);
+	AddStrucMember(id,"CHAN_RX_OUT",	0X11,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X11,	"Receive Buffer Output Pointer Register",	1);
+	AddStrucMember(id,"CHAN_RX_TTY",	0X13,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X13,	"TTY Receive Register",	1);
+	AddStrucMember(id,"CHAN_RATE",	0X14,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X14,	"Selectable Rate Register",	1);
+	
+	id = GetStrucIdByName("IOP8089_SCP");
+	AddStrucMember(id,"BUS_TYPE",	0X0,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X0,	"1 = 16-bit, 0 = 8-bit",	0);
+	AddStrucMember(id,"_UNUSED_0",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"SCB_OFF",	0X2,	0x10500400,	0X0,	2);
+	AddStrucMember(id,"SCB_SEG",	0X4,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("IOP8089_SCB");
+	AddStrucMember(id,"SOC",	0X0,	0x000400,	-1,	1);
+	AddStrucMember(id,"_UNUSED_1",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"CB_OFF",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"CB_SEG",	0X4,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("IOP8089_CB");
+	AddStrucMember(id,"CCW",	0X0,	0x000400,	-1,	1);
+	AddStrucMember(id,"BUSY",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"PB_OFF",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"PB_SEG",	0X4,	0x10000400,	-1,	2);
+	AddStrucMember(id,"_UNUSED_2",	0X6,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("CPU_REGS");
+	AddStrucMember(id,"SAVE_AX",	0X0,	0x10009400,	-1,	2);
+	AddStrucMember(id,"SAVE_BX",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_CX",	0X4,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DX",	0X6,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SI",	0X8,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DI",	0XA,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DS",	0XC,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_ES",	0XE,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SS",	0X10,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SP",	0X12,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_BP",	0X14,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_FLAGS",	0X16,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_IP",	0X18,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_CS",	0X1A,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("FDC_REGS");
+	AddStrucMember(id,"FDC_COMMAND",	0X0,	0x085d00,	-1,	1);
+	AddStrucMember(id,"FDC_STATUS",	0X1,	0x005d00,	-1,	1);
+	AddStrucMember(id,"FDC_QUEUE_ADDR_LO",	0X2,	0x10085d00,	-1,	2);
+	AddStrucMember(id,"FDC_QUEUE_ADDR_HI",	0X4,	0x10004500,	-1,	2);
+	AddStrucMember(id,"FDC_QUEUE_SIZE",	0X6,	0x000400,	-1,	1);
+	AddStrucMember(id,"FDC_QUEUE_PTR",	0X7,	0x000400,	-1,	1);
+	AddStrucMember(id,"FDC_PARAMS_1",	0XA,	0x004500,	-1,	32);
+	AddStrucMember(id,"FDC_PARAMS_2",	0X2A,	0x004500,	-1,	32);
+	
+	id = GetStrucIdByName("IO_BLOCK");
+	AddStrucMember(id,"MON_RSVD_1",	0X0,	0x10600400,	-1,	2);
+	AddStrucMember(id,"MON_RSVD_2",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"DISK_OPCODE",	0X4,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_DRIVE_NUM",	0X5,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_TRACK",	0X6,	0x10085400,	-1,	2);
+	AddStrucMember(id,"DISK_HEAD",	0X8,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_SECTOR",	0X9,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_SECTOR_COUNT",	0XA,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_OP_STATUS",	0XB,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_RETRIES",	0XD,	0x085400,	-1,	1);
+	AddStrucMember(id,"DISK_DMA_OFFSET",	0XE,	0x10085400,	-1,	2);
+	AddStrucMember(id,"DISK_DMA_SEGMENT",	0X10,	0x10085400,	-1,	2);
+	AddStrucMember(id,"DISK_SECTOR_LEN",	0X12,	0x10085400,	-1,	2);
+	
+	id = GetStrucIdByName("IOP8089_PB");
+	AddStrucMember(id,"IOP_OFFSET",	0X0,	0x10000400,	-1,	2);
+	AddStrucMember(id,"IOP_SEGMENT",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"HDD_OPCODE",	0X4,	0x085400,	-1,	1);
+	AddStrucMember(id,"HDD_STATUS",	0X5,	0x085400,	-1,	1);
+	AddStrucMember(id,"HDD_CYLINDER",	0X6,	0x10085400,	-1,	2);
+	AddStrucMember(id,"HDD_DRIVE_AND_HEAD",	0X8,	0x085400,	-1,	1);
+	AddStrucMember(id,"HDD_SECTOR",	0X9,	0x085400,	-1,	1);
+	AddStrucMember(id,"HDD_SECTOR_LEN",	0XA,	0x10085400,	-1,	2);
+	AddStrucMember(id,"HDD_DMA_OFFSET",	0XC,	0x10085400,	-1,	2);
+	AddStrucMember(id,"HDD_DMA_SEGMENT",	0XE,	0x10085400,	-1,	2);
+	AddStrucMember(id,"RESVD_0",	0X10,	0x10000400,	-1,	2);
+	AddStrucMember(id,"RESVD_1",	0X12,	0x10000400,	-1,	2);
+	AddStrucMember(id,"RESVD_2",	0X14,	0x10000400,	-1,	2);
+	return id;
+}
+
+//------------------------------------------------------------------------
+// Information about structure types
+
+static Structures(void) {
+        auto id;
+	id = Structures_0(id);
 }
 
 //------------------------------------------------------------------------
@@ -182,7 +414,7 @@ static Bytes_0(void) {
 	MakeByte	(0XEC6);
 	MakeName	(0XEC6,	"WHATS_CB_SEG");
 	MakeByte	(0XEC7);
-	MakeName	(0XEC7,	"POST_RESULT_byte_EC7");
+	MakeName	(0XEC7,	"POST_RESULT");
 	MakeRptCmt	(0XEC8,	"1 = HDD, 2 = FDD");
 	MakeByte	(0XEC8);
 	MakeName	(0XEC8,	"BOOT_DISK_CODE");
@@ -205,11 +437,9 @@ static Bytes_0(void) {
 	MakeCode	(0XFE000);
 	MakeName	(0XFE000,	"SYSCALL_ENTRY");
 	MakeCode	(0XFE003);
-	MakeName	(0XFE003,	"DO_RESET_ENTRY");
-	MakeComm	(0XFE004,	"CMOS Memory");
+	MakeName	(0XFE003,	"POST");
 	MakeCode	(x=0XFE004);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE006,	"AT Keyboard controller 8042.");
 	MakeCode	(x=0XFE006);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE008);
@@ -218,59 +448,56 @@ static Bytes_0(void) {
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE00F);
 	OpEnumEx		(x,	0,	GetEnum("IO_PORT"),0);
+	MakeComm	(0XFE019,	"Firmware start");
 	MakeCode	(0XFE019);
+	MakeComm	(0XFE022,	"Firmware length");
+	MakeComm	(0XFE02E,	"POST FAIL 1: Bad checksum");
 	MakeCode	(0XFE032);
 	MakeCode	(x=0XFE037);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE03D,	"Game I/O port");
-	MakeComm	(0XFE03E,	"Game I/O port");
 	MakeCode	(x=0XFE03F);
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE042);
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE04A);
 	OpHex		(x,	1);
+	MakeComm	(0XFE050,	"POST FAIL 2: Bad MMU");
 	MakeCode	(0XFE050);
 	MakeCode	(0XFE054);
 	MakeCode	(x=0XFE057);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE05F,	"Game I/O port");
 	MakeCode	(x=0XFE060);
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE064);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE06D);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE073,	"Game I/O port");
 	MakeCode	(x=0XFE074);
 	OpHex		(x,	1);
-	MakeComm	(0XFE07B,	"Game I/O port");
-	MakeComm	(0XFE07C,	"Game I/O port");
 	MakeCode	(x=0XFE07D);
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE085);
 	OpHex		(x,	1);
 	MakeCode	(x=0XFE089);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
+	MakeComm	(0XFE091,	"POST FAIL 3:");
 	MakeCode	(0XFE091);
 	MakeCode	(0XFE095);
 	MakeCode	(x=0XFE098);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE09D,	"Game I/O port");
 	MakeCode	(x=0XFE0A5);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE0A8,	"Game I/O port");
 	MakeCode	(x=0XFE0A9);
 	OpHex		(x,	1);
-	MakeComm	(0XFE0B0,	"Game I/O port");
-	MakeComm	(0XFE0B1,	"Game I/O port");
 	MakeCode	(x=0XFE0B2);
 	OpHex		(x,	1);
+	MakeComm	(0XFE0C0,	"POST FAIL 4: MMU test");
 	MakeCode	(0XFE0C0);
 	MakeCode	(x=0XFE0C4);
 	OpOff		(x,	1,	0XFE000);
 	OpOff		(x,	129,	0XFE000);
 	MakeCode	(0XFE0CB);
+	MakeComm	(0XFE0E4,	"POST FAIL 5: MMU interrupt test");
 	MakeCode	(0XFE0E8);
 	MakeCode	(x=0XFE0EA);
 	OpHex		(x,	1);
@@ -281,31 +508,32 @@ static Bytes_0(void) {
 	MakeCode	(x=0XFE104);
 	OpOff		(x,	1,	0XFE000);
 	OpOff		(x,	129,	0XFE000);
-	MakeName	(0XFE108,	"TRMP_0");
 	MakeCode	(0XFE10A);
 	MakeCode	(0XFE112);
-	MakeName	(0XFE112,	"POST_MEM_1_sub_FE112");
 	MakeCode	(x=0XFE11F);
 	OpHex		(x,	1);
 	MakeCode	(0XFE12C);
 	MakeCode	(x=0XFE143);
 	OpHex		(x,	1);
+	MakeComm	(0XFE152,	"POST FAIL 6: Memory error");
 	MakeCode	(0XFE152);
-	MakeName	(0XFE152,	"EARLY_BEFORE_POST_sub_FE152");
-	MakeName	(0XFE154,	"TRMP");
+	MakeName	(0XFE152,	"FAIL_TEST_6");
+	MakeName	(0XFE154,	"POST_CHECK_FAILED_4");
 	MakeCode	(0XFE156);
 	MakeName	(0XFE163,	"POST_sub_FE163");
+	MakeComm	(0XFE19B,	"POST FAIL 7: Memory error");
 	MakeCode	(0XFE19B);
-	MakeName	(0XFE19D,	"TRMP_1");
+	MakeName	(0XFE19D,	"POST_CHECK_FAILED_5");
 	MakeCode	(0XFE19F);
-	MakeName	(0XFE19F,	"POST_PIT_1");
+	MakeName	(0XFE19F,	"SUCCESS_TEST_7");
 	MakeCode	(x=0XFE1A1);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE1A8);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeName	(0XFE1BC,	"TRMP_2");
+	MakeComm	(0XFE1BA,	"POST FAIL 8: PIT Error");
+	MakeName	(0XFE1BC,	"POST_CHECK_FAILED_6");
 	MakeCode	(0XFE1BE);
-	MakeName	(0XFE1BE,	"POST_PIT");
+	MakeName	(0XFE1BE,	"SUCCESS_TEST_8");
 	MakeCode	(x=0XFE1C0);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE1C4);
@@ -316,45 +544,43 @@ static Bytes_0(void) {
 	MakeCode	(x=0XFE1E5);
 	OpOff		(x,	1,	0XFE000);
 	OpOff		(x,	129,	0XFE000);
-	MakeComm	(0XFE1F3,	"DMA page register 74LS612:\nChannel 3 (hard disk DMA) (address bits 16-23)");
 	MakeCode	(x=0XFE1F3);
 	OpEnumEx		(x,	0,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE1F7);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeComm	(0XFE1FA,	"manufacture's diagnostic checkpoint");
-	MakeComm	(0XFE1FD,	"manufacture's diagnostic checkpoint");
-	MakeComm	(0XFE200,	"manufacture's diagnostic checkpoint");
 	MakeCode	(x=0XFE204);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE20D);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE211);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeName	(0XFE226,	"TRMP_3");
+	MakeComm	(0XFE224,	"POST FAIL 9: Interrupt test failure");
+	MakeName	(0XFE226,	"POST_CHECK_FAILED_7");
+	MakeComm	(0XFE228,	"POST SUCCESSFUL");
 	MakeCode	(0XFE228);
-	MakeName	(0XFE228,	"POST_PIT_BL");
-	MakeName	(0XFE22A,	"TRMP_4");
+	MakeName	(0XFE228,	"SUCCESS_TEST_9");
+	MakeName	(0XFE22A,	"POST_CHECK_FAILED_8");
 	MakeComm	(0XFE22C,	"FALLTHROUGH");
 	MakeCode	(0XFE22C);
 	MakeName	(0XFE22C,	"TIMER_INT");
 	MakeName	(0XFE22E,	"DEFAULT_INT");
 	MakeCode	(x=0XFE232);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
-	MakeName	(0XFE232,	"MMU_sub_FE232");
-	MakeComm	(0XFE23B,	"Game I/O port");
+	MakeName	(0XFE232,	"MMU_LINEAR_MAPPING");
 	MakeCode	(x=0XFE244);
 	OpOff		(x,	1,	0XFE000);
 	OpOff		(x,	129,	0XFE000);
-	MakeName	(0XFE244,	"POST_START");
+	MakeName	(0XFE244,	"POST_FINISHED");
 	MakeCode	(0XFE24A);
+	MakeComm	(0XFE24E,	"FALLTHROUGH");
 	MakeCode	(x=0XFE252);
 	OpOff		(x,	1,	0XFE000);
 	OpOff		(x,	129,	0XFE000);
+	MakeName	(0XFE252,	"WARM_POST");
 	MakeCode	(0XFE259);
 	MakeComm	(0XFE25D,	"Start the memory test at 7E00:1FFF");
 	MakeRptCmt	(0XFE260,	"That is 7FFFF");
 	MakeCode	(0XFE27A);
-	MakeComm	(0XFE285,	"AT Keyboard controller 8042.");
 	MakeCode	(x=0XFE285);
 	OpEnumEx		(x,	1,	GetEnum("IO_PORT"),0);
 	MakeCode	(x=0XFE287);
@@ -2539,47 +2765,40 @@ static Functions_0(void) {
 
 	MakeFunction    (0XFE000,0XFE003);
 	SetFunctionFlags(0XFE000,0x82);
-	MakeFunction    (0XFE003,0XFE108);
+	MakeFunction    (0XFE003,0XFE22C);
 	SetFunctionFlags(0XFE003,0x0);
-	MakeFunction    (0XFE108,0XFE10A);
-	SetFunctionFlags(0XFE108,0x0);
-	MakeFunction    (0XFE10A,0XFE112);
-	SetFunctionFlags(0XFE10A,0x0);
-	MakeFunction    (0XFE112,0XFE12C);
-	SetFunctionFlags(0XFE112,0x0);
-	MakeFunction    (0XFE12C,0XFE154);
-	SetFunctionFlags(0XFE12C,0x0);
-	MakeFunction    (0XFE154,0XFE156);
-	SetFunctionFlags(0XFE154,0x0);
-	MakeFunction    (0XFE156,0XFE163);
-	SetFunctionFlags(0XFE156,0x0);
-	MakeFunction    (0XFE163,0XFE19D);
-	SetFunctionFlags(0XFE163,0x0);
-	MakeFunction    (0XFE19D,0XFE19F);
-	SetFunctionFlags(0XFE19D,0x0);
-	MakeFunction    (0XFE19F,0XFE1BC);
-	SetFunctionFlags(0XFE19F,0x0);
-	MakeFunction    (0XFE1BC,0XFE1BE);
-	SetFunctionFlags(0XFE1BC,0x0);
-	MakeFunction    (0XFE1BE,0XFE226);
-	SetFunctionFlags(0XFE1BE,0x0);
-	MakeFunction    (0XFE226,0XFE228);
-	SetFunctionFlags(0XFE226,0x0);
-	MakeFunction    (0XFE228,0XFE22A);
-	SetFunctionFlags(0XFE228,0x0);
-	MakeFunction    (0XFE22A,0XFE22C);
-	SetFunctionFlags(0XFE22A,0x0);
+	MakeNameEx(0XFE019, "COLD_BOOT", SN_LOCAL);
+	MakeNameEx(0XFE025, "CHECKSUM_NEXT_BYTE", SN_LOCAL);
+	MakeNameEx(0XFE032, "SUCCESS_TEST_1", SN_LOCAL);
+	MakeNameEx(0XFE03B, "CHECK_NEXT_MMU_PORT", SN_LOCAL);
+	MakeNameEx(0XFE050, "FAIL_TEST_2", SN_LOCAL);
+	MakeNameEx(0XFE052, "POST_CHECK_FAILED_0", SN_LOCAL);
+	MakeNameEx(0XFE054, "SUCCESS_TEST_2", SN_LOCAL);
+	MakeNameEx(0XFE091, "FAIL_TEST_3", SN_LOCAL);
+	MakeNameEx(0XFE093, "POST_CHECK_FAILED_1", SN_LOCAL);
+	MakeNameEx(0XFE095, "SUCCESS_TEST_3", SN_LOCAL);
+	MakeNameEx(0XFE0C0, "FAIL_TEST_4", SN_LOCAL);
+	MakeNameEx(0XFE0C2, "POST_CHECK_FAILED_2", SN_LOCAL);
+	MakeNameEx(0XFE0C4, "SUCCESS_TEST_4", SN_LOCAL);
+	MakeNameEx(0XFE0E6, "POST_CHECK_FAILED_3", SN_LOCAL);
+	MakeNameEx(0XFE0E8, "SUCCESS_TEST_5", SN_LOCAL);
+	MakeNameEx(0XFE156, "SUCCESS_TEST_6", SN_LOCAL);
+	MakeNameEx(0XFE19B, "FAIL_TEST_7", SN_LOCAL);
+	MakeNameEx(0XFE1DB, "INSTALL_DEFAULT_IRQS", SN_LOCAL);
 	MakeFunction    (0XFE22C,0XFE22E);
 	SetFunctionFlags(0XFE22C,0x0);
 	MakeFunction    (0XFE22E,0XFE232);
 	SetFunctionFlags(0XFE22E,0x2);
 	MakeFunction    (0XFE232,0XFE244);
 	SetFunctionFlags(0XFE232,0x0);
-	MakeFunction    (0XFE244,0XFE2AC);
+	MakeFunction    (0XFE244,0XFE252);
 	SetFunctionFlags(0XFE244,0x0);
-	MakeNameEx(0XFE2A7, "POST_FF_loc_FE2A7", SN_LOCAL);
+	MakeFunction    (0XFE252,0XFE2AC);
+	SetFunctionFlags(0XFE252,0x0);
 	MakeFunction    (0XFE2AC,0XFE36B);
 	SetFunctionFlags(0XFE2AC,0x0);
+	MakeNameEx(0XFE342, "POST_FAILED", SN_LOCAL);
+	MakeNameEx(0XFE35A, "POST_DONE", SN_LOCAL);
 	MakeFunction    (0XFE36B,0XFE38A);
 	SetFunctionFlags(0XFE36B,0x2);
 	MakeFunction    (0XFE38A,0XFE3BD);
@@ -2696,7 +2915,7 @@ static Functions_0(void) {
 	MakeLocal(0XFE834, 0XFE959, "[bp-0X8]", "DATA_BUF_LO");
 	MakeLocal(0XFE834, 0XFE959, "[bp-0X7]", "DATA_BUF_MID");
 	MakeLocal(0XFE834, 0XFE959, "[bp-0X6]", "DATA_BUF_HI");
-	MakeNameEx(0XFE89C, "SECTOR_256", SN_LOCAL);
+	MakeNameEx(0XFE89C, "SECTOR_LEN_256", SN_LOCAL);
 	MakeNameEx(0XFE8C1, "READ_SECTORS", SN_LOCAL);
 	MakeNameEx(0XFE90E, "WAIT_FDC_NOT_BUSY", SN_LOCAL);
 	MakeNameEx(0XFE91C, "WAIT_FOR_FDC_READY", SN_LOCAL);
@@ -2771,7 +2990,7 @@ static Functions_0(void) {
 	MakeFrame(0XFEF58, 0XE, 2, 0X0);
 	MakeLocal(0XFEF58, 0XFF008, "[bp-0XA]", "IO_VAL16");
 	MakeLocal(0XFEF58, 0XFF008, "[bp-0X8]", "IO_PORT");
-	MakeLocal(0XFEF58, 0XFF008, "[bp-0X6]", "WIDTH");
+	MakeLocal(0XFEF58, 0XFF008, "[bp-0X6]", "PORT_WIDTH");
 	MakeLocal(0XFEF58, 0XFF008, "[bp+0X4]", "DIRECTION_INPUT");
 	MakeNameEx(0XFEF7F, "GOT_WIDTH", SN_LOCAL);
 	MakeNameEx(0XFEFBF, "NOT_BYTE", SN_LOCAL);
@@ -2782,7 +3001,7 @@ static Functions_0(void) {
 	MakeFunction    (0XFF01E,0XFF0A0);
 	SetFunctionFlags(0XFF01E,0x10);
 	MakeFrame(0XFF01E, 0XC, 2, 0X0);
-	MakeLocal(0XFF01E, 0XFF0A0, "[bp-0X6]", "LENGTH");
+	MakeLocal(0XFF01E, 0XFF0A0, "[bp-0X6]", "LEN");
 	MakeLocal(0XFF01E, 0XFF0A0, "[bp+0X4]", "CHANNEL");
 	MakeLocal(0XFF01E, 0XFF0A0, "[bp+0X6]", "ATTRS");
 	MakeLocal(0XFF01E, 0XFF0A0, "[bp+0X8]", "BUFFER");
@@ -2811,7 +3030,7 @@ static Functions_0(void) {
 	SetFunctionFlags(0XFF172,0x10);
 	MakeFrame(0XFF172, 0X0, 2, 0X0);
 	MakeLocal(0XFF172, 0XFF211, "[bp+0X4]", "CHANNEL");
-	MakeLocal(0XFF172, 0XFF211, "[bp+0X6]", "LENGTH");
+	MakeLocal(0XFF172, 0XFF211, "[bp+0X6]", "LEN");
 	MakeLocal(0XFF172, 0XFF211, "[bp+0X8]", "BUFFER");
 	MakeNameEx(0XFF19E, "WAIT_FOR_IO", SN_LOCAL);
 	MakeNameEx(0XFF1FA, "SET_ATTRS", SN_LOCAL);
@@ -2820,7 +3039,7 @@ static Functions_0(void) {
 	SetFunctionFlags(0XFF211,0x10);
 	MakeFrame(0XFF211, 0X0, 2, 0X0);
 	MakeLocal(0XFF211, 0XFF296, "[bp+0X4]", "CHANNEL");
-	MakeLocal(0XFF211, 0XFF296, "[bp+0X6]", "LENGTH");
+	MakeLocal(0XFF211, 0XFF296, "[bp+0X6]", "LEN");
 	MakeLocal(0XFF211, 0XFF296, "[bp+0X8]", "OFFSET_OR_ATTRS");
 	MakeLocal(0XFF211, 0XFF296, "[bp+0XA]", "BUFFER");
 	MakeNameEx(0XFF232, "WAIT_CHAN_READY", SN_LOCAL);
@@ -2857,7 +3076,7 @@ static Functions_0(void) {
 	MakeFunction    (0XFF592,0XFF59D);
 	SetFunctionFlags(0XFF592,0x0);
 	MakeFrame(0XFF592, 0X0, 2, 0X0);
-	MakeNameEx(0XFF593, "WAIT_READY", SN_LOCAL);
+	MakeNameEx(0XFF593, "WAIT_SIO_READY", SN_LOCAL);
 	MakeFunction    (0XFF59E,0XFF5B8);
 	SetFunctionFlags(0XFF59E,0x10);
 	MakeFrame(0XFF59E, 0X0, 2, 0X0);

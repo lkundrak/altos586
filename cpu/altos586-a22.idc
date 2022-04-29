@@ -5,16 +5,236 @@
 // บ                      Licensed to: Freeware version                      บ
 // ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
 //
-
-// DUMP OF RANGE 0..100000
+//
+//      This file should be used in the following way:
+//         - reload executable into IDA with using switch -c
+//         - use File, Load IDC file and load this file.
+//
+//      NOTE: This file doesn't contain all information from the database.
+//
 
 #define UNLOADED_FILE   1
 #include <idc.idc>
 
 static main(void) {
+        GenInfo();              // various settings
+        Segments();             // segmentation
+        Enums();                // enumerations
+        Structures();           // structure types
         Bytes();                // individual bytes (code,data)
         Functions();            // function definitions
         SegRegs();              // segment register values
+}
+
+//------------------------------------------------------------------------
+// General information
+
+static GenInfo(void) {
+
+        DeleteAll();    // purge database
+	SetPrcsr("metapc");
+	StringStp(0xA);
+	Tabs(1);
+	Comments(0);
+	Voids(0);
+	XrefShow(2);
+	AutoShow(1);
+	Indent(16);
+	CmtIndent(40);
+	TailDepth(0x10);
+}
+
+//------------------------------------------------------------------------
+// Information about segmentation
+
+static Segments(void) {
+	SetSelector(0X1,0XFC00);
+	SetSelector(0X2,0X0);
+	;
+	SegCreate(0X0,0X1000,0X0,0,1,2);
+	SegRename(0X0,"ZERO");
+	SegClass (0X0,"");
+	SegCreate(0XFC000,0XFFFF0,0X1,0,1,2);
+	SegRename(0XFC000,"ROM");
+	SegClass (0XFC000,"CODE");
+	SegDefReg(0xFC000,"es",0x0);
+	SegDefReg(0xFC000,"ss",0x0);
+	SegDefReg(0xFC000,"ds",0x0);
+	SegDefReg(0xFC000,"fs",0x0);
+	SegDefReg(0xFC000,"gs",0x0);
+	SetSegmentType(0XFC000,2);
+	SegCreate(0XFFFF0,0X100000,0XF000,0,1,2);
+	SegRename(0XFFFF0,"HIGH");
+	SegClass (0XFFFF0,"");
+	LowVoids(0x0);
+	HighVoids(0x10000);
+}
+
+//------------------------------------------------------------------------
+// Information about enum types
+
+static Enums(void) {
+        auto id;
+}
+
+static Structures_0(id) {
+
+	id = AddStrucEx(-1,"CHAN_REGS",0);
+	id = AddStrucEx(-1,"IOP8089_SCP",0);
+	id = AddStrucEx(-1,"IOP8089_SCB",0);
+	id = AddStrucEx(-1,"IOP8089_CB",0);
+	id = AddStrucEx(-1,"HD_PARM_BLOCK",0);
+	id = AddStrucEx(-1,"IOP_BLK",0);
+	id = AddStrucEx(-1,"FDD_REGS",0);
+	id = AddStrucEx(-1,"CPU_REGS",0);
+	id = AddStrucEx(-1,"IOPB",0);
+	SetStrucComment(id,"Page 6-12",0);
+	
+	id = GetStrucIdByName("CHAN_REGS");
+	AddStrucMember(id,"CHAN_PARM",	0X0,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X0,	"Channel Parameter Register",	1);
+	AddStrucMember(id,"CHAN_STAT",	0X2,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X2,	"Channel Status Register",	1);
+	AddStrucMember(id,"CHAN_CMD",	0X4,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X4,	"Channel Command Register",	1);
+	AddStrucMember(id,"CHAN_TX_LO",	0X5,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X5,	"Transmit Data Buffer Address Register LO",	1);
+	AddStrucMember(id,"CHAN_TX_MID",	0X6,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X6,	"Transmit Data Buffer Address Register MID",	1);
+	AddStrucMember(id,"CHAN_TX_HI",	0X7,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X7,	"Transmit Data Buffer Address Register HI",	1);
+	AddStrucMember(id,"CHAN_TX_LEN",	0X8,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X8,	"Transmit Data Buffer Length Register",	1);
+	AddStrucMember(id,"CHAN_RX_LO",	0XA,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XA,	"Receive Data Buffer Address Register LO",	1);
+	AddStrucMember(id,"CHAN_RX_MID",	0XB,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XB,	"Receive Data Buffer Address Register MID",	1);
+	AddStrucMember(id,"CHAN_RX_HI",	0XC,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XC,	"Receive Data Buffer Address Register HI",	1);
+	AddStrucMember(id,"CHAN_RX_LEN",	0XD,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0XD,	"Receive Data Buffer Length Register",	1);
+	AddStrucMember(id,"CHAN_RX_IN",	0XF,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0XF,	"Receive Buffer Input Pointer Register",	1);
+	AddStrucMember(id,"CHAN_RX_OUT",	0X11,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X11,	"Receive Buffer Output Pointer Register",	1);
+	AddStrucMember(id,"CHAN_RX_TTY",	0X13,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X13,	"TTY Receive Register",	1);
+	AddStrucMember(id,"CHAN_RATE",	0X14,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X14,	"Selectable Rate Register",	1);
+	
+	id = GetStrucIdByName("IOP8089_SCP");
+	AddStrucMember(id,"BUS_TYPE",	0X0,	0x000400,	-1,	1);
+	SetMemberComment(id,	0X0,	"1 = 16-bit, 0 = 8-bit",	0);
+	AddStrucMember(id,"_UNUSED",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"SCB_OFF",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SCB_SEG",	0X4,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("IOP8089_SCB");
+	AddStrucMember(id,"SOC",	0X0,	0x000400,	-1,	1);
+	AddStrucMember(id,"_UNUSED",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"CB_OFF",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"CB_SEG",	0X4,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("IOP8089_CB");
+	AddStrucMember(id,"CCW",	0X0,	0x000400,	-1,	1);
+	AddStrucMember(id,"BUSY",	0X1,	0x000400,	-1,	1);
+	AddStrucMember(id,"PB_OFF",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"PB_SEG",	0X4,	0x10000400,	-1,	2);
+	AddStrucMember(id,"_UNUSED",	0X6,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("HD_PARM_BLOCK");
+	AddStrucMember(id,"CMD",	0X0,	0x085500,	-1,	1);
+	AddStrucMember(id,"STAT",	0X1,	0x089500,	-1,	1);
+	AddStrucMember(id,"CYL_LO",	0X2,	0x089500,	-1,	1);
+	AddStrucMember(id,"CYL_HI",	0X3,	0x089500,	-1,	1);
+	AddStrucMember(id,"HEAD_DRV",	0X4,	0x089500,	-1,	1);
+	AddStrucMember(id,"SEC",	0X5,	0x089500,	-1,	1);
+	AddStrucMember(id,"BYTECNT_LO",	0X6,	0x089500,	-1,	1);
+	AddStrucMember(id,"BYTECNT_HI",	0X7,	0x089500,	-1,	1);
+	AddStrucMember(id,"BUF_OFF_LO",	0X8,	0x089500,	-1,	1);
+	AddStrucMember(id,"BUF_OFF_HI",	0X9,	0x089500,	-1,	1);
+	AddStrucMember(id,"BUF_SEG_LO",	0XA,	0x089500,	-1,	1);
+	AddStrucMember(id,"BUG_SEG_HI",	0XB,	0x089500,	-1,	1);
+	AddStrucMember(id,"_RSVD0",	0XC,	0x089500,	-1,	1);
+	AddStrucMember(id,"SEC_DONE",	0XD,	0x089500,	-1,	1);
+	AddStrucMember(id,"_RSVD1",	0XE,	0x000400,	-1,	1);
+	AddStrucMember(id,"JOB_DONE",	0XF,	0x000400,	-1,	1);
+	
+	id = GetStrucIdByName("IOP_BLK");
+	AddStrucMember(id,"CMD",	0X0,	0x085500,	-1,	1);
+	AddStrucMember(id,"IOP_00_OR_01",	0X1,	0x089500,	-1,	1);
+	AddStrucMember(id,"NUM_256B_CHUNKS",	0X2,	0x089500,	-1,	1);
+	AddStrucMember(id,"IOP_00_OR_01_B",	0X3,	0x089500,	-1,	1);
+	AddStrucMember(id,"COUNTER",	0X4,	0x089500,	-1,	1);
+	AddStrucMember(id,"SEC_NUM_PER_512B",	0X5,	0x089500,	-1,	1);
+	AddStrucMember(id,"SOME_COUNTER",	0X6,	0x089500,	-1,	1);
+	AddStrucMember(id,"IOP_5O",	0X7,	0x089500,	-1,	1);
+	AddStrucMember(id,"IOP_FF",	0X8,	0x089500,	-1,	1);
+	AddStrucMember(id,"STH_LO",	0X9,	0x089500,	-1,	1);
+	AddStrucMember(id,"STH_HI",	0XA,	0x089500,	-1,	1);
+	AddStrucMember(id,"STH2_LO",	0XB,	0x089500,	-1,	1);
+	AddStrucMember(id,"STH2_HI",	0XC,	0x089500,	-1,	1);
+	AddStrucMember(id,"STATUS",	0XD,	0x089500,	-1,	1);
+	
+	id = GetStrucIdByName("FDD_REGS");
+	AddStrucMember(id,"FLOPPY_COMMAND_REG",	0X0,	0x085d00,	-1,	1);
+	AddStrucMember(id,"anonymous_0",	0X1,	0x000d00,	-1,	1);
+	AddStrucMember(id,"FLOPPY_DATA_BUF_PTR",	0X2,	0x10085d00,	-1,	2);
+	AddStrucMember(id,"SECTOR_SIZE",	0XC,	0x10205d00,	-1,	2);
+	AddStrucMember(id,"field_E",	0XE,	0x000400,	-1,	1);
+	AddStrucMember(id,"field_F",	0XF,	0x000400,	-1,	1);
+	
+	id = GetStrucIdByName("CPU_REGS");
+	AddStrucMember(id,"SAVE_AX",	0X0,	0x10009400,	-1,	2);
+	AddStrucMember(id,"SAVE_BX",	0X2,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_CX",	0X4,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DX",	0X6,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SI",	0X8,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DI",	0XA,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_DS",	0XC,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_ES",	0XE,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SS",	0X10,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_SP",	0X12,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_BP",	0X14,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_FLAGS",	0X16,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_IP",	0X18,	0x10000400,	-1,	2);
+	AddStrucMember(id,"SAVE_CS",	0X1A,	0x10000400,	-1,	2);
+	
+	id = GetStrucIdByName("IOPB");
+	AddStrucMember(id,"field_0",	0X0,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X0,	"Monitor reserved",	1);
+	AddStrucMember(id,"field_2",	0X2,	0x10004400,	-1,	2);
+	SetMemberComment(id,	0X2,	"Monitor reserved",	1);
+	AddStrucMember(id,"IOPCODE",	0X4,	0x085400,	-1,	1);
+	AddStrucMember(id,"DRIVE",	0X5,	0x085400,	-1,	1);
+	SetMemberComment(id,	0X5,	"Ignored for floppies",	1);
+	AddStrucMember(id,"TRACK",	0X6,	0x10085c00,	-1,	2);
+	AddStrucMember(id,"HEAD",	0X8,	0x085c00,	-1,	1);
+	AddStrucMember(id,"SECTOR",	0X9,	0x085c00,	-1,	1);
+	AddStrucMember(id,"SECTOR_COUNT",	0XA,	0x085400,	-1,	1);
+	AddStrucMember(id,"RETURN_STATUS",	0XB,	0x085400,	-1,	1);
+	AddStrucMember(id,"STATUS_MASK",	0XC,	0x000400,	-1,	1);
+	SetMemberComment(id,	0XC,	"Not used?",	1);
+	AddStrucMember(id,"RETRIES",	0XD,	0x085400,	-1,	1);
+	AddStrucMember(id,"BUF_OFFSET",	0XE,	0x10085400,	-1,	2);
+	AddStrucMember(id,"BUF_SEGMENT",	0X10,	0x10085400,	-1,	2);
+	AddStrucMember(id,"SECTOR_LEN",	0X12,	0x10085400,	-1,	2);
+	SetMemberComment(id,	0X12,	"Ignored for hard drives",	1);
+	AddStrucMember(id,"field_14",	0X14,	0x10004400,	-1,	2);
+	SetMemberComment(id,	0X14,	"Monitor reserved",	1);
+	AddStrucMember(id,"field_16",	0X16,	0x10004400,	-1,	2);
+	SetMemberComment(id,	0X16,	"Monitor reserved",	1);
+	AddStrucMember(id,"field_18",	0X18,	0x10004400,	-1,	2);
+	SetMemberComment(id,	0X18,	"Monitor reserved",	1);
+	return id;
+}
+
+//------------------------------------------------------------------------
+// Information about structure types
+
+static Structures(void) {
+        auto id;
+	id = Structures_0(id);
 }
 
 //------------------------------------------------------------------------
