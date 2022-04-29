@@ -323,9 +323,6 @@ static Bytes_0(void) {
 	MakeName	(0XF55,	"IOP8089_CPB");
 	MakeStruct	(0XF6F,	"IOPB");
 	MakeName	(0XF6F,	"BOOT_IOPB");
-	ExtLinA		(0XFC000,	0,	"; File Name   : Z:\\home\\lkundrak\\altos\\roms\\altos586.bin");
-	ExtLinA		(0XFC000,	1,	"; Format      : Binary file");
-	ExtLinA		(0XFC000,	2,	"; Base Address: FC00h Range: FC000h - 100000h Loaded length: 4000h");
 	MakeCode	(0XFC000);
 	MakeName	(0XFC000,	"SYSCALL_TRAMPOLINE");
 	MakeCode	(0XFC003);

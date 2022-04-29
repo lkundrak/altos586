@@ -491,9 +491,6 @@ ZERO:0FFF		  db	? ;
 ZERO:0FFF ZERO		  ends
 ZERO:0FFF
 ROM:0000 ; ───────────────────────────────────────────────────────────────────────────
-ROM:0000 ; File	Name   : Z:\home\lkundrak\altos\roms\altos586.bin
-ROM:0000 ; Format      : Binary	file
-ROM:0000 ; Base	Address: FC00h Range: FC000h - 100000h Loaded length: 4000h
 ROM:0000 ; ═══════════════════════════════════════════════════════════════════════════
 ROM:0000
 ROM:0000 ; Segment type: Pure code

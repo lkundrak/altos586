@@ -485,9 +485,6 @@ BOOT_IOPB	IOPB <?>		; DATA XREF: DO_DISK_IOPB+14w
 ZERO		ends
 
 ; ───────────────────────────────────────────────────────────────────────────
-; File Name   :	Z:\home\lkundrak\altos\roms\altos586.bin
-; Format      :	Binary file
-; Base Address:	FC00h Range: FC000h - 100000h Loaded length: 4000h
 ; ═══════════════════════════════════════════════════════════════════════════
 
 ; Segment type:	Pure code

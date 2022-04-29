@@ -2,27 +2,72 @@
 Altos 586 main CPU firmware analysis
 ------------------------------------
 
-ROM images
-==========
+This document describes the background of the two different sets of
+firmware ROMS and some information on how to make some sense of them.
 
-The firmware ROM chips on my board are 2764s marked with "16349" and
-"16350" labels. They were read with the following command:
 
-  minipro -y -p '2764@DIP28' -r 16350.rom
-  minipro -y -p '2764@DIP28' -r 16349.rom
+ROM images -- Monitor Version V1.3
+==================================
+
+These firmware images from two 4 KiB files obtained from
+<http://www.bitsavers.org/pdf/altos/586_986/firmware/Altos586_firmware.zip>
+
+This firmware apperars to interface to Floppy Disk via a controller on the
+CPU board and to a Hard Disk via a Intel 8089-based Controller Board. This
+is what one would expect on a stock Altos 586 system.
 
 The two 8-bit ROMs interface to a 16-bit bus and therefore need to be
 merged together. The address pins seems to be reversed. The un-reversal and
 merging is done with merge.pl:
 
-  perl merge.pl 16349.rom 16350.rom >altos586.bin 
+  perl merge.pl altos586-v13-g1.rom altos586-v13-g2.rom >altos586-v13.bin
+
+The resulting image includes the string "Monitor Version V1.3".
+
+  Filename               SHA256 Checksum
+  altos586-v13-g1.rom    e610510ec46924b6d85f698ac1866fb3cccf0f88e4614730b86262d4bd84af30
+  altos586-v13-g2.rom    a61b5a2baa04017e1c34985bf1d9d10562ea205d90afbbd759a10ac179eefeec
+  altos586-v13.bin       1c28e1c9f5dd0f0f9800dfd4000945c755d940550d0bc6e8c032a7691f0db02c
+
+
+ROM images -- Monitor Version a2.2
+==================================
+
+These ROM images were read from a CPU board marked "586 CPU BD (C) 1982".
+I bought the board alone and have no idea what computer it came from.
+
+This firmware does not use the CPU board's controller to access the Floppy
+Disk, nor does it access the Hard Drive via a Intel 8089-based Controller
+Board. It issues different commands, presumably targetted at a different
+controller board.  There are vestiges of either -- on startup the floppy
+disk parameters are set to a controller on a CPU board and submits and
+task to the 8089 albeit with an empty parameter block. Perhaps the board
+comes from a computer with a different controller board that doesn't use
+an Intel 8089 and interfaces both a Hard Drive and a Floppy Drive.
+
+The firmware ROM chips on my board are two 8 KiB 2764s marked with "16349"
+and "16350" labels. They were read with the following command:
+
+  minipro -y -p '2764@DIP28' -r altos586-a22-16349.rom
+  minipro -y -p '2764@DIP28' -r altos586-a22-16350.rom
+
+The two 8-bit ROMs interface to a 16-bit bus and therefore need to be
+merged together. The address pins seems to be reversed. The un-reversal and
+merging is done with merge.pl:
+
+  perl merge.pl altos586-a22-16349.rom altos586-a22-16350.rom >altos586-a22.bin
 
 The resulting image includes the string "Monitor Version a2.2".
 
-  Filename     SHA256 Checksum
-  16349.rom    2e68d268ae016ba4e19da1a773aaa5a61134e80deafb5a815e677113cadc898d
-  16350.rom    f4da2e1364f789672572d8b5c03cddda0a7764e358daf884f5baf4e5ef4df705
-  altos586.bin 85372da96df3c35a87743a72c00ed7613f6f981e04fa1c8e3267a083fbff0239
+  Filename               SHA256 Checksum
+  altos586-a22-16349.rom 2e68d268ae016ba4e19da1a773aaa5a61134e80deafb5a815e677113cadc898d
+  altos586-a22-16350.rom f4da2e1364f789672572d8b5c03cddda0a7764e358daf884f5baf4e5ef4df705
+  altos586-a22.bin       85372da96df3c35a87743a72c00ed7613f6f981e04fa1c8e3267a083fbff0239
+
+This firmware seems somewhat similar to that of Altos 586T that uses a hard
+drive and a floppy drive (and also a tape drive) on a separate board:
+<http://www.bitsavers.org/pdf/altos/586_986/firmware/Altos586T_firmware.zip>
+
 
 Disassembly
 ===========
@@ -40,15 +85,16 @@ Here's a mirror:
 
 The disassembly session can be started like this:
 
-   wineconsole idag.exe altos586.idb
+   wine idag.exe altos586-v13.idb
+   wine idag.exe altos586-a22.idb
 
 Note that my reverse engineering is not complete and some comments & names
 reflect my uninformed guesses as opposed to facts. Do not trust it too much.
 
-There's also a script that generates the altos586.idc, altos586.asm and
-altos586.lst files:
+There's also a script that generates the *.idc, *.asm and *.lst files:
 
   sh mkdumps.sh
+
 
 Emulation
 =========
@@ -62,8 +108,8 @@ sense to extend MAME with 586 emulation instead.
 Here's how it's run:
 
   cc -O2 -Werror -Wall -lx86emu -o altos altos.c
-  ./altos altos586.bin 2>emu.log
-  DEBUG=1 ./altos altos586.bin 2>emu.log
+  ./altos altos586-a22.bin 2>emu.log
+  DEBUG=1 ./altos altos586-v13.bin 2>emu.log
 
 The tracing will be spewn to stderr. The latter form enables the
 instruction trace.
