@@ -1,0 +1,69 @@
+------------------------------------
+Altos 586 main CPU firmware analysis
+------------------------------------
+
+ROM images
+==========
+
+The firmware ROM chips on my board are 2764s marked with "16349" and
+"16350" labels. They were read with the following command:
+
+  minipro -y -p '2764@DIP28' -r 16350.rom
+  minipro -y -p '2764@DIP28' -r 16349.rom
+
+The two 8-bit ROMs interface to a 16-bit bus and therefore need to be
+merged together. The address pins seems to be reversed. The un-reversal and
+merging is done with merge.pl:
+
+  perl merge.pl 16349.rom 16350.rom >altos586.bin 
+
+The resulting image includes the string "Monitor Version a2.2".
+
+  Filename     SHA256 Checksum
+  16349.rom    2e68d268ae016ba4e19da1a773aaa5a61134e80deafb5a815e677113cadc898d
+  16350.rom    f4da2e1364f789672572d8b5c03cddda0a7764e358daf884f5baf4e5ef4df705
+  altos586.bin 85372da96df3c35a87743a72c00ed7613f6f981e04fa1c8e3267a083fbff0239
+
+Disassembly
+===========
+
+I'm doing my disassembly with IDA Pro Freeware 5.0. The later freeware
+versions lack the 32-bit x86 support. It is a 32-bit Windows GUI program
+that works fine on Linux via wine.
+
+  Filename      SHA256 Checksum
+  idafree50.exe e3a5e1f2334f68f14f5ee81c3fcc44121cb24f514be78dfc30805ceee0de6029
+
+Here's a mirror:
+
+  https://downloads.scummvm.org/frs/extras/IDA/idafree50.exe
+
+The disassembly session can be started like this:
+
+   wineconsole idag.exe altos586.idb
+
+Note that my reverse engineering is not complete and some comments & names
+reflect my uninformed guesses as opposed to facts. Do not trust it too much.
+
+There's also a script that generates the altos586.idc, altos586.asm and
+altos586.lst files:
+
+  sh mkdumps.sh
+
+Emulation
+=========
+
+There's a libx86emu based emulator that loads in the ROM dump and runs it
+while emulating the IOP. It's incomplete, ugly and doesn't smell well.
+It's good enough to launch the ROM monitor and conduct some tests, but
+doesn't boot any actual operating system. Perhaps some day it might make
+sense to extend MAME with 586 emulation instead.
+
+Here's how it's run:
+
+  cc -O2 -Werror -Wall -lx86emu -o altos altos.c
+  ./altos altos586.bin 2>emu.log
+  DEBUG=1 ./altos altos586.bin 2>emu.log
+
+The tracing will be spewn to stderr. The latter form enables the
+instruction trace.

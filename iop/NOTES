@@ -1,0 +1,62 @@
+----------------------------------------
+Altos 586 IO Processor firmware analysis
+----------------------------------------
+
+ROM image
+=========
+
+The IOP ROM chip on my board was an AM2764A marked with "16573" label.
+It includes the string "5-86 IOP monitor - version 6.2".
+
+  Filename     SHA256 Checksum
+  iop.bin      c8ab0fc3aa3dd1654f3065c3d09456303af63ebc9e8f5a25529b87dd1734a573
+
+It was read with the following command:
+
+  minipro -y -p 'AM2764A@DIP28' -r iop.bin
+
+Disassembly
+===========
+
+I'm doing my disassembly with IDA Freeware version 4.1. The later freeware
+versions lack the Z80 support. It is a 32-bit Windows text console program
+that works mostly fine on Linux via wineconsole.
+
+  Filename     SHA256 Checksum
+  idafre41.zip 43801cf8116024b72a352cc28cd49db4a67ced69c772e9bf946caf7d080dad52
+
+Here are some mirrors I've been able to find:
+
+  https://napoleon.acc.umu.se/mirror/archive/ftp.sunet.se/pub/simtelnet/win95/prog/idafre41.zip
+  https://master.dl.sourceforge.net/project/hawk800/Disassembly/idafre41.zip
+
+The disassembly session can be started like this:
+
+   wineconsole idaw.exe iop.idb
+
+Note that my reverse engineering is not complete and some comments & names
+reflect my uninformed guesses as opposed to facts. Do not trust it too much.
+
+There's also a script that generates the iop.idc, iop.asm and iop.lst files.
+The latter one is used to amend the emulator trace output:
+
+  sh mkdumps.sh
+
+Emulation
+=========
+
+The emu.pl loads in the ROM dump, runs it while submitting some commands
+and logging the register values, amending them with disassembly output and
+translating memory and port addresses into human readable values.
+
+Neither the code nor the design is tidy. It's just a quick & dirty tool I
+write for my use and I'm sharing it in case someone else will find it
+useful.
+
+Here's how it's run:
+
+  perl emu.pl
+
+Or, if you want the output more verbose with the actual disassembly:
+
+  DEBUG=1 perl emu.pl
