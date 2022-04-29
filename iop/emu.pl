@@ -56,7 +56,8 @@ sub peek
 		trace 'HOST MEM READ:  0x%04x -> 0x%02x [%s]', $bus_adr, $val, $name;
 		return $val;
 	} elsif ($adr >= 0x2800) {
-		die sprintf 'UNMAPPED READ 0x%04x', $adr;
+		die sprintf 'UNMAPPED READ 0x%04x', $adr unless main::buggy_access();
+		warn 'emulator generated an extra mem access due to a bug';
 		#warn sprintf 'UNMAPPED READ 0x%04x', $adr;
 	} else {
 		my $val = $self->SUPER::peek(@_);
@@ -118,6 +119,17 @@ my $func;
 sub call { unshift @calls, shift }
 sub uncall { shift @calls }
 
+sub buggy_access
+{
+	# https://rt.cpan.org/Ticket/Display.html?id=142489
+	my $ret = 0;
+	eval {
+		$ret = 1 if $m->peek($e->register('PC')->get - 1) == 0xfc
+			and $m->peek($e->register('PC')->get - 2) == 0xcb;
+	};
+	return $ret;
+}
+
 sub fregs
 {
 	my $e = shift;
@@ -147,7 +159,14 @@ my $fdc_intrq = 0;
 my $fdc_data = 0;
 my $fdc_sector = 0;
 my $fdc_status = 0;
+my $fdc_track = 0;
 my $sio_a_reg = undef;
+
+my $dma_state = 0;
+my $dma_len = 0;
+my $dma_porta = 0;
+my $dma_portb = 0;
+my $fdc_bytes = 0;
 
 my %out = (
 	0x00 => sub {
@@ -201,14 +220,25 @@ my %out = (
 			trace "FDC CMD WRITE SEEK 0x%02x <- 0x%02x [%s]", @_;
 			$fdc_status &= 0x20; # keep head loaded
 			$fdc_status |= 0x04 if $fdc_data == 0; # track 0
+			$fdc_track = $fdc_data;
 		} elsif ($val == 0x18) {
 			trace "FDC CMD WRITE SEEK WITH HEAD LOAD 0x%02x <- 0x%02x [%s]", @_;
 			$fdc_status = 0x20; # head loaded
 			$fdc_status |= 0x04 if $fdc_data == 0; # track 0
-		} elsif ($val == 0x8a) { # 88 = side 0
+			$fdc_track = $fdc_data;
+		} elsif ($val == 0x8a || $val == 0x88) { # 8a = side 1, 88 = side 0
 			# E=0 no head load, F1=Side 1
 			trace "FDC CMD READ SINGLE 512B SECTOR 0x%02x <- 0x%02x [%s]", @_;
 			$fdc_status = 0x00;
+		} elsif ($val == 0xe0) {
+			trace "FDC CMD READ TRACK 0x%02x <- 0x%02x [%s]", @_;
+			$fdc_status = 0x00;
+			$fdc_status = 0x02;
+		} elsif ($val == 0xf0) {
+			trace "FDC CMD WRITE TRACK 0x%02x <- 0x%02x [%s]", @_;
+			$fdc_status = 0x00;
+			$fdc_status = 0x02;
+			$fdc_bytes = 6328;
 		} else {
 			trace "FDC CMD WRITE 0x%02x <- 0x%02x [%s]", @_;
 			die;
@@ -230,7 +260,66 @@ my %out = (
 		trace "FDC DATA WRITE 0x%02x <- 0x%02x [%s]", @_;
 	},
 
-#	0x38 => sub { trace "WRITE 0x%02x 0x%02x [%s]", @_; },
+	0x3c => sub {
+		my ($adr, $val) = @_;
+		if ($dma_state == 0) {
+			my ($adr, $val) = @_;
+			if ($val == 0xc3) {
+				# Group 6
+				trace 'DMA WRITE RESET 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x14) {
+				# Group 1 Configure port A
+				trace 'DMA WRITE PORT A MEMORY, INCREMENTS 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x28) {
+				# Group 2 Configure port B
+				trace 'DMA WRITE PORT B I/O, FIXED 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x92) {
+				# Group 5
+				trace 'DMA WRITE STOP, CE/WAIT MUX, READY LOW 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x79) {
+				# Group 0
+				trace 'DMA WRITE PORT B -> PORT A TRANSFER (ADDR16, LEN16) 0x%02x <- 0x%02x [%s]', @_;
+				$dma_state = 1;
+			} elsif ($val == 0x85) {
+				# Group 4
+				trace 'DMA WRITE BYTE PORT B (ADDR8) 0x%02x <- 0x%02x [%s]', @_;
+				$dma_state = 5;
+			} elsif ($val == 0xcf) {
+				# Group 6
+				trace 'DMA WRITE LOAD ADDRS, RESET COUNTER 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x87) {
+				# Group 6
+				trace 'DMA WRITE ENABLE 0x%02x <- 0x%02x [%s]', @_;
+			} elsif ($val == 0x05) {
+				# Group 0
+				trace 'DMA WRITE PORT A -> PORT B TRANSFER 0x%02x <- 0x%02x [%s]', @_;
+			} else {
+				die sprintf '%02x', $val;
+			}
+		} elsif ($dma_state == 1) {
+			trace 'DMA WRITE PORT A ADDR LO 0x%02x <- 0x%02x [%s]', @_;
+			$dma_porta = $val;
+			$dma_state = 2;
+		} elsif ($dma_state == 2) {
+			trace 'DMA WRITE PORT A ADDR HI 0x%02x <- 0x%02x [%s]', @_;
+			$dma_porta |= $val << 8;
+			$dma_state = 3;
+		} elsif ($dma_state == 3) {
+			trace 'DMA WRITE PORT A LEN LO 0x%02x <- 0x%02x [%s]', @_;
+			$dma_len = $val;
+			$dma_state = 4;
+		} elsif ($dma_state == 4) {
+			trace 'DMA WRITE PORT A LEN HI 0x%02x <- 0x%02x [%s]', @_;
+			$dma_len |= $val << 8;
+			$dma_state = 0;
+		} elsif ($dma_state == 5) {
+			trace 'DMA WRITE PORT B ADDR 0x%02x <- 0x%02x [%s]', @_;
+			$dma_portb = $val;
+			$dma_state = 0;
+		} else {
+			die;
+		}
+	},
 );
 
 my @sio_c;
@@ -309,11 +398,17 @@ my %in = (
 
 	0x38 => sub {
 		trace "FDC STAT READ 0x%02x -> 0x%02x [%s]", shift, $fdc_status, shift;
+		if ($fdc_status & 0x02) {
+			$fdc_status &= ~0x02 unless $fdc_bytes--;
+		}
 		$fdc_intrq = 0;
 		return $fdc_status;
 	},
 
-	0x39 => sub { $_ = 0x00; trace "FDC TRACK READ 0x%02x -> 0x%02x [%s]", shift, $_, shift; $_ },
+	0x39 => sub {
+		trace "FDC TRACK READ 0x%02x -> 0x%02x [%s]", shift, $fdc_track, shift;
+		return $fdc_track;
+	},
 
 	0x94 => sub { $_ = 0x01; trace "RTC STAT READ 0x%02x -> 0x%02x [%s]", shift, $_, shift; $_ },
 );
@@ -382,7 +477,7 @@ my $entry;
 while (<$dump>) {
 	chomp;
 	s/\r//g;
-	$subroutine = undef if /S U B R O U T I N E/;
+	$subroutine = undef if /S U B R O U T I N E|^RAM:/;
 	/^R[OA]M:/ or next;
 	/^R[OA]M:([^\s\*]+)[\s\*]?(\s*(([^\s:]+):)?\s*([^;]*[^\s:])?\s*(;.*)?)$/ or die "[$_]";
 	my ($addr, $str, $label, $raw, $comment) = (hex $1, $2, $4, $5 // '', $6);
@@ -497,7 +592,7 @@ while (1) {
 	#if ($insncnt++ > 50000) {
 	#if ($insncnt++ > 5000000) {
 	#if ($insncnt++ > 800000) {
-	if ($insncnt++ > 1000000) {
+	if ($insncnt++ > 2000000) {
 	#if ($insncnt++ > 21) {
 		last;
 	}
@@ -672,6 +767,61 @@ while (1) {
 
 		}
 
+
+		# 00068560:  00  00  00  00  00  00  00  00  00  00  00  00  00  00  08  40   ...............@
+		#                                                                   cmd  stat
+		#           RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx RWx
+		# 00068570:  e8  85  06  02  01  00  00  00  00  02  00  02  00  00  00  00   ................
+		#            ^^^^^^^^^^  ^^  ^^  ^^
+		#            addr
+		#           RWx RWx RWx RWx RWx RWx RWx RWx rWx rWx RWx RWx rWx rWx rWx rWx
+
+		if ($insncnt == 300000) {
+			trace '=== FDC UNK 0 ===';
+
+			foreach (0..0) {
+				$busmem{0x13020+4*$_} = 0x20;
+				$busmem{0x13021+4*$_} = 0x10;
+				$busmem{0x13022+4*$_} = 0x01;
+			}
+
+
+			$busmem{0x11020} = 0x25; # command
+			$busmem{0x11021} = 0xeb; # <-- 0x00 on finish
+			$busmem{0x11022} = 0x00;
+			$busmem{0x11023} = 0x01; # track number
+			$busmem{0x11024} = 0x00; # head
+			$busmem{0x11025} = 0x01;
+			$busmem{0x11026} = 0x06; # buffer lo
+			$busmem{0x11027} = 0x47; # buffer mid
+			$busmem{0x11028} = 0x01; # buffer hi
+			$busmem{0x11029} = 0x00; # x<-- untouched on finish
+
+#			$busmem{0x4a0} = 0x88; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
+#			$busmem{0x4a1} = 0x00; # Status <-- 0x08 then 0x00 on all done
+#			$busmem{0x4a2} = 0x20;	# commands
+#			$busmem{0x4a3} = 0x30;
+#			$busmem{0x4a4} = 0x01;
+#			$busmem{0x4a5} = 0x02;
+#			$busmem{0x4a6} = 0x01;	# number of entries at above address
+#			$busmem{0x4a7} = 0x00;  # number of entries processed <-- 0x01 on done
+
+
+			$busmem{0x4a0} = 0x8f; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
+			$busmem{0x4a1} = 0x00; # Status <-- 0x08 then 0x00 on all done
+
+			$busmem{0x4a2} = 0x5a;	# commands
+			$busmem{0x4a3} = 0xa5;
+			$busmem{0x4a4} = 0x01;
+
+			$busmem{0x4a5} = 0x02;
+			$busmem{0x4a6} = 0x00;	# number of entries at above address
+			$busmem{0x4a7} = 0x00;  # number of entries processed <-- 0x01 on done
+
+			$busmem{0x41b}++; # New Command Register
+		}
+
+=cut
 		if ($insncnt == 300000) {
 		#if ($init == 100) {
 			trace '=== FDC UNK 0 ===';
@@ -703,7 +853,9 @@ while (1) {
 			#$busmem{0x11020} = 0xa0; # FDC_HANDLER02_WRITE_BUS  | BAD HOST MEM READ:  0x2800 at emu.pl line 53.
 			#$busmem{0x11020} = 0xaf; # FDC_HANDLER02_WRITE_BUS  | BAD HOST MEM READ:  0x2800 at emu.pl line 53.
 			#$busmem{0x11020} = 0x20; # FDC_HANDLER02_WRITE_BUS  | BAD HOST MEM READ:  0x2800 at emu.pl line 53.
-			$busmem{0x11020} = 0x50;
+			#$busmem{0x11020} = 0x20; # Read sector
+			#$busmem{0x11020} = 0x30; # Write sector
+			$busmem{0x11020} = 0x50; # Read track
 
 			$busmem{0x11021} = 0xff; # something writes 0x80 here, looks like status
 			#$busmem{0x11022} = 0x01; # unknown. 0x01, 0x02 bad
@@ -731,15 +883,16 @@ while (1) {
 			$busmem{0x4a5} = 0x00;
 
 			$busmem{0x4a6} = 0x01;	# number of entries at above address
-			$busmem{0x4a7} = 0x00;
+			$busmem{0x4a7} = 0x00;  # number of entries processed
 
-
-			$busmem{0x04a0} = $ENV{CMD} // 0xc8; # Command
 			$busmem{0x04a0} = 0x88; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
 			$busmem{0x04a1} = 0x00; # Status
 
 			$busmem{0x41b}++; # New Command Register
 		}
+=cut
+
+#
 		#if ($init == 100) {
 		#	warn '=== OUT CHANNEL 0 ===';
 		#	$busmem{0x964} = 0x6a; #ord 'X';
@@ -924,8 +1077,7 @@ sub hostmem { (
 0x04a5 => 'CH FDC - Command Block Pointer High',
 
 0x04a6 => 'CH FDC - Command Block Count',
-#0x04a6 => 'CH FDC - Command Block Count - Lo',
-#0x04a7 => 'CH FDC - Command Block Count - Hi',
+0x04a6 => 'CH FDC - Command Block Done',
 
 # 0x4aa - 0x4e9
 (map { 0x04aa+$_ => sprintf ("CH FDC %D", $_) } 0..63),
