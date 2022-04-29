@@ -208,13 +208,15 @@ Offset          | Size          | Description                   | Typical Value
 _
 +00h            | BYTE          | Command                       | 87h, 88h, .\~.\~.
 +01h            | BYTE          | Status                        | 00h, 48h, 40h, C0h, .\~.\~.
-+02h \[en] +05h | DWORD         | Floppy Command Queue Address  | T{
++02h \[en] +04h | BYTE[3]       | Floppy Command Queue Address  | T{
 Pointer to
 .i "Floppy Command Queue"
 T}
-+06h \[en] +06h | WORD          | Floppy Command Count          |
-+08h            | BYTE          | Unknown/Reserved              | 00h
-+09h            | BYTE          | Unknown/Reserved              | 00h
++05h            | BYTE          | Unknown                       | 20h
++06h            | BYTE          | Floppy Command Queue Size     |
++07h            | BYTE          | Floppy Command Queue Pointer  |
++08h            | BYTE          | Unused                        | 00h
++09h            | BYTE          | Unused                        | 00h
 +0Ah \[en] +B3h | BYTE[32]      | Floppy 1 Parameters           | T{
 .i "Floppy Parameters"
 T}
@@ -317,16 +319,19 @@ T}
 .TS
 doublebox nospaces allbox tab(|);
 lb|lb|lb|lbx
+l|l|l|l
+^|l|l|^
 l|l|l|l.
 Offset                   | Size          | Description           | Typical Value
 _
-+00h                     | WORD          | Command               | 10h, 20h, .\~.\~.
-+01h                     | WORD          | Status                | 
-+02h                     | WORD          | Unknown               | 00h
-+03h                     | WORD          | Track                 | 00h \[en] 28h
-+04h                     | WORD          | Head                  | 00h, 01h
-+05h                     | WORD          | Sector                | 01h \[en] 09h
-+06h \[en] +09h          | DWORD         | Data Buffer           |
++00h                     | High 4 bits   | Command               | 10h, 20h, 1Ah, 2Ah, .\~.\~.
+                         | Low 4 bits    | Retries               |
++01h                     | BYTE          | Status                |
++02h                     | BYTE          | Drive Number          | 00h
++03h                     | BYTE          | Track                 | 00h \[en] 28h
++04h                     | BYTE          | Head                  | 00h, 01h
++05h                     | BYTE          | Sector                | 01h \[en] 09h
++06h \[en] +09h          | BYTE[3]       | Data Buffer Address   |
 .TE
 
 .bp
