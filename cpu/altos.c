@@ -20,6 +20,7 @@ int warm = 0;
 int term = 0;
 int hddfd = -1;
 int fddfd = -1;
+unsigned romstart = 0;
 
 // 9 sectors/track
 unsigned char bootcode[512] = {
@@ -103,10 +104,14 @@ iopattn(x86emu_t *emu)
 		xprintf ("CB1.PB.TP = 0x%04x (%04x:%04x)\n", tp1,
 			x86emu_read_word(emu, pb1 + 2),
 			x86emu_read_word(emu, pb1));
-		if (tp1 == 0xff268) {
+		if (tp1 == 0xff268 || tp1 == 0xffeba) {
 			unsigned pp = pb1;
 
-			xprintf("fc00:3268 Parameter block:\n");
+			if (tp1 == 0xff268)
+				xprintf("fc00:3268 Parameter block:\n");
+			if (tp1 == 0xffeba)
+				xprintf("fe00:1eba Parameter block:\n");
+
 			xprintf(" 0x%05x 0x00 0x%04x Offset\n", pp + 0x00, x86emu_read_word(emu, pp + 0x00));
 			xprintf(" 0x%05x 0x02 0x%04x Segment\n", pp + 0x02, x86emu_read_word(emu, pp + 0x02));
 			xprintf(" 0x%05x 0x04   0x%02x IN/OUT (Command?)\n", pp + 0x04, x86emu_read_byte(emu, pp + 0x04));
@@ -125,6 +130,9 @@ iopattn(x86emu_t *emu)
 			xprintf(" 0x%05x 0x16 0x%04x IN/OUT (Link Register)\n", pp + 0x16, x86emu_read_word(emu, pp + 0x16));
 
 			x86emu_write_byte(emu, cb + 0 + 1, 0); // Mark channel not busy
+
+			// io status
+			//x86emu_write_byte(emu, pp + 0x05, 0x00);
 		}
 	}
 
@@ -190,7 +198,7 @@ hddread(x86emu_t *emu, unsigned data,
 	for (i = 0; i < len; i++) {
 		switch (read(hddfd, &c, 1)) {
 		case 0: // EOF
-			fprintf(stderr, "Short read\n");
+			fprintf(stderr, "HDD: Short read\n");
 			return;
 		case -1:
 			perror("read");
@@ -280,17 +288,18 @@ fddread(x86emu_t *emu, unsigned data, unsigned secsize,
 	unsigned char c;
 	int i;
 
+	tb = (track * 2 + head) * secs;
+	lba = (tb + (start - 1))*secsize;
+	len = (tb + end)*secsize - lba;
+
+	xprintf ("FDD READ LBA=0x%05x LEN=%d | HEAD=%d TRACK=%d START=%d END=%d SEC=%d TO=0x%05x\n",
+		lba, len, head, track, start, end, secsize, data);
+
 	if (fddfd == -1) {
 		for (i = 0; i < sizeof(bootcode); i++)
 			x86emu_write_byte (emu, data + i, bootcode[i]);
 		return;
 	}
-
-	tb = (track * 2 + head) * secs;
-	lba = (tb + (start - 1))*secsize;
-	len = (tb + end)*secsize - lba;
-
-	xprintf ("  LBA=%d LEN=%d\n", lba, len);	
 
 	if (lseek(fddfd, lba, SEEK_SET) == -1) {
 		perror("SEEK_SET");
@@ -300,7 +309,7 @@ fddread(x86emu_t *emu, unsigned data, unsigned secsize,
 	for (i = 0; i < len; i++) {
 		switch (read(fddfd, &c, 1)) {
 		case 0: // EOF
-			fprintf(stderr, "Short read\n");
+			fprintf(stderr, "FDD: Short read\n");
 			return;
 		case -1:
 			perror("read");
@@ -359,8 +368,6 @@ cpuint2_floppy(x86emu_t *emu)
 	switch (cmd) {
 	case 0x46:
 		if (data) {
-			xprintf ("FDD READ DMAADR=0x%05x HEAD=%d TRACK=%d START=%d END=%d SEC=%d TO=0x%05x\n",
-				data, head, track, start, end, 256*secsize, data);
 			fddread(emu, data, 256*secsize, head, track, start, end);
 			//Boot Failed, Status=EE*
 			//x86emu_write_byte (emu, ptr + 13, 0xee);
@@ -435,6 +442,43 @@ out:
 	return 6;
 }
 
+static void
+trytx (x86emu_t *emu, unsigned ptr)
+{
+	unsigned txbuf;
+	unsigned char len;
+	char c;
+	int i;
+
+	txbuf = x86emu_read_word(emu, ptr + 5);
+	txbuf |= x86emu_read_byte(emu, ptr + 7) << 16;
+	len = x86emu_read_byte(emu, ptr + 8);
+	x86emu_write_byte(emu, ptr + 8, 0);
+
+	if (len == 0)
+		return;
+
+	xprintf("TX: {len=%d, buf=0x%x}\n", len, txbuf);
+
+	fprintf(stderr, "EMU: OUT: {len=%d, buf=0x%x}", len, txbuf);
+	for (i = 0; i < len; i++) {
+		c = x86emu_read_byte (emu, txbuf + i);
+		if (c != '\r') {
+			putchar(c);
+			emu->max_instr += 10000;
+		}
+		fprintf (stderr, "{%02x} ", c);
+	}
+	fprintf (stderr, "| ");
+	for (i = 0; i < len; i++) {
+		c = x86emu_read_byte (emu, txbuf + i);
+		putc (isalnum(c) ? c : '.', stderr);
+	}
+	fprintf(stderr, "\n");
+	fflush(stderr);
+	fflush(stdout);
+}
+
 static unsigned
 pchcmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 {
@@ -475,36 +519,16 @@ pchcmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	case 0: xprintf ("(Command %d) no operation\n", cmd & 0x0f); break;
 	case 1:
 		xprintf ("(Command %d) initialize channel\n", cmd & 0x0f);
-		x86emu_write_word(emu, ptr + 2, 0x100a);
+		//x86emu_write_word(emu, ptr + 2, 0x100a);
+		//x86emu_write_word(emu, ptr + 2, 0x110b);
+		x86emu_write_word(emu, ptr + 2, 0x100b);
 		break;
 	case 2:
 		xprintf ("(Command %d) start transmitter\n", cmd & 0x0f);
-		{
-			unsigned txbuf = x86emu_read_word(emu, ptr + 5);
-			unsigned char len = x86emu_read_byte(emu, ptr + 8);
-			char c;
-			int i;
-
-			fprintf(stderr, "EMU: OUT: ");
-			for (i = 0; i < len; i++) {
-				c = x86emu_read_byte (emu, txbuf + i);
-				if (c != '\r') {
-					putchar(c);
-					emu->max_instr += 10000;
-				}
-				fprintf (stderr, "{%02x} ", c);
-			}
-			fprintf (stderr, "| ");
-			for (i = 0; i < len; i++) {
-				c = x86emu_read_byte (emu, txbuf + i);
-				putc (isalnum(c) ? c : '.', stderr);
-			}
-			fflush(stdout);
-			fprintf(stderr, "\n");
-		}
 		break;
 	case 3:
 		xprintf ("(Command %d) acknowledge receiver\n", cmd & 0x0f);
+		x86emu_write_word(emu, ptr + 2, 0x100b);
 		//x86emu_stop (emu);
 		break;
 	case 4:
@@ -544,6 +568,8 @@ pchcmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		x86emu_stop (emu);
 	}
 
+	trytx(emu, ptr);
+
 	// ack the command
 	x86emu_write_byte(emu, ptr + 4, cmd & 0x7f);
 
@@ -567,19 +593,20 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 	ptr2 = x86emu_read_byte(emu, ptr + 6);
 	ptr2 |= x86emu_read_byte(emu, ptr + 7) << 8;
 	ptr2 |= x86emu_read_byte(emu, ptr + 8) << 16;
-	ptr2 |= x86emu_read_byte(emu, ptr + 9) << 24;
 
-	xprintf ("        0 0x%04x         0x%02x Command Register?\n",	ptr + 0, cmd);
-	xprintf ("        1 0x%04x         0x%02x Status Register?\n",	ptr + 1, x86emu_read_byte(emu, ptr + 1));
-	xprintf ("        2 0x%04x         0x%02x\n",			ptr + 2, x86emu_read_byte(emu, ptr + 2));
-	xprintf ("        3 0x%04x         0x%02x Track\n",			ptr + 3, track);
-	xprintf ("        4 0x%04x         0x%02x Head\n",			ptr + 4, head);
-	xprintf ("        5 0x%04x         0x%02x Sector\n",		ptr + 5, sec);
-	xprintf ("        6 0x%04x   0x%08x Data Buffer\n", ptr + 6, ptr2);
+	xprintf ("        0 0x%04x       0x%02x Command Register?\n",	ptr + 0, cmd);
+	xprintf ("        1 0x%04x       0x%02x Status Register?\n",	ptr + 1, x86emu_read_byte(emu, ptr + 1));
+	xprintf ("        2 0x%04x       0x%02x\n",			ptr + 2, x86emu_read_byte(emu, ptr + 2));
+	xprintf ("        3 0x%04x       0x%02x Track\n",			ptr + 3, track);
+	xprintf ("        4 0x%04x       0x%02x Head\n",			ptr + 4, head);
+	xprintf ("        5 0x%04x       0x%02x Sector\n",		ptr + 5, sec);
+	xprintf ("        6 0x%04x   0x%06x Data Buffer\n", ptr + 6, ptr2);
+	xprintf ("        9 0x%04x       0x%02x Unknown\n",		ptr + 9, sec);
 
 	switch (cmd & 0x70) {
 	case 0x10:
 		xprintf ("        SEEK\n");
+		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
 		// seek
 		return 0;
 	case 0x20:
@@ -588,6 +615,7 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 		xprintf ("        READ SECTOR (secsize=%d)\n", secsize);
 
 		fddread(emu, ptr2, secsize, head, track, sec, sec);
+		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
 		// read sector
 		return 0;
 	}
@@ -613,21 +641,21 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		goto out;
 
 	xprintf ("[%s] {0x%04x}\n", name, ptr);
-	xprintf ("    0 0x%04x         0x%02x Command Register?\n",	ptr + 0, cmd);
-	xprintf ("    1 0x%04x         0x%02x Status Register?\n",	ptr + 1, x86emu_read_byte(emu, ptr + 1)); // IOP write 0
+	xprintf ("    0 0x%04x       0x%02x Command Register?\n",	ptr + 0, cmd);
+	xprintf ("    1 0x%04x       0x%02x Status Register?\n",	ptr + 1, x86emu_read_byte(emu, ptr + 1)); // IOP write 0
 
 	ptr2 = x86emu_read_byte(emu, ptr + 2);
 	ptr2 |= x86emu_read_byte(emu, ptr + 3) << 8;
 	ptr2 |= x86emu_read_byte(emu, ptr + 4) << 16;
-	ptr2 |= x86emu_read_byte(emu, ptr + 5) << 24;
-	xprintf ("    2 0x%04x   0x%08x Comm Buffer\n", ptr + 2, ptr2);
+	xprintf ("    2 0x%04x   0x%06x Comm Buffer\n", ptr + 2, ptr2);
+
+	xprintf ("    5 0x%04x       0x%02x Unknown\n",	ptr + 5,  x86emu_read_byte(emu, ptr + 5));
 
 	cnt = x86emu_read_byte(emu, ptr + 6);
-	cnt |= x86emu_read_byte(emu, ptr + 7) << 8;
-	xprintf ("    6 0x%04x       0x%04x Comm Count\n",	ptr + 5, cnt);
-
-	xprintf ("    8 0x%04x         0x%02x Unknown\n", ptr + 8,  x86emu_read_byte(emu, ptr + 8));
-	xprintf ("    9 0x%04x         0x%02x Unknown\n", ptr + 9,  x86emu_read_byte(emu, ptr + 9));
+	xprintf ("    6 0x%04x       0x%02x Comm Count\n",	ptr + 6,  cnt);
+	xprintf ("    7 0x%04x       0x%02x Comm Done\n",	ptr + 7,  x86emu_read_byte(emu, ptr + 7));
+	xprintf ("    8 0x%04x       0x%02x Unknown\n",	ptr + 8,  x86emu_read_byte(emu, ptr + 8));
+	xprintf ("    9 0x%04x       0x%02x Unknown\n",	ptr + 9,  x86emu_read_byte(emu, ptr + 9));
 
 	if (cmd == 0x87) {
 		xprintf ("   SET FLOPPY PARAMS\n");
@@ -639,9 +667,13 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 			if (i % 16 == 15)
 				xprintf ("\n");
 		}
-	}
 
-	if ((cmd & 0xbf) == 0x88) {
+		x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
+		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
+	// ack the command
+	//x86emu_write_byte(emu, ptr + 0, cmd & 0x7f);
+	} else if (cmd == 0x88) {
+		//if ((cmd & 0xbf) == 0x88) {
 		int bad = 0;
 
 		xprintf ("    FLOPPY COMMAND SET\n");
@@ -649,8 +681,7 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 			ptr3 = x86emu_read_byte(emu, ptr2 + (4*i) + 0);
 			ptr3 |= x86emu_read_byte(emu, ptr2 + (4*i) + 1) << 8;
 			ptr3 |= x86emu_read_byte(emu, ptr2 + (4*i) + 2) << 16;
-			ptr3 |= x86emu_read_byte(emu, ptr2 + (4*i) + 3) << 24;
-			xprintf ("    [Floppy Command %d] {0x%04x}\n", i, ptr3);
+			xprintf ("    [Floppy Command %d] {0x%04x:0x%04x}\n", i, ptr2 + (4*i), ptr3);
 			bad |= fcmd(emu, ptr3, printonly, fdparms);
 		}
 
@@ -662,6 +693,23 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 				x86emu_write_byte(emu, ptr + 1, 0x40);
 			}
 		}
+
+		x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
+		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
+		x86emu_write_byte(emu, ptr + 7, cnt); // commands done
+	} else if (cmd == 0x8f) {
+		// what is this
+		if (cnt == 0) {
+			x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
+			x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
+			x86emu_write_byte(emu, ptr + 7, cnt); // commands done
+		} else {
+			printf ("\nBAD FLOPPY COMMAND: 0x%x cnt=%d\n", cmd, cnt);
+			x86emu_stop (emu);
+		}
+	} else if (!printonly) {
+		printf ("\nBAD FLOPPY COMMAND: 0x%x\n", cmd);
+		x86emu_stop (emu);
 	}
 
 
@@ -676,7 +724,7 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		goto out;
 
 	// ack the command
-	x86emu_write_byte(emu, ptr + 0, cmd & 0x7f);
+	//x86emu_write_byte(emu, ptr + 0, cmd & 0x7f);
 
 	xprintf ("\n");
 //	x86emu_stop (emu);
@@ -684,11 +732,52 @@ out:
 	return 22;
 }
 
+static unsigned ch1_ptr = 0;
+
+static void
+tryrx (void)
+{
+	unsigned rxptr;
+	unsigned inptr;
+	int c;
+
+	c = getchar();
+	if (c == EOF) {
+		if (errno != EAGAIN) {
+			perror("getchar");
+			x86emu_stop (emu);
+		}
+	} else {
+		// characters available
+		x86emu_write_word(emu, ch1_ptr + 2, x86emu_read_word(emu, ch1_ptr + 2) | 0x0100);
+
+		inptr = x86emu_read_word(emu, ch1_ptr + 15); // input pointer
+
+		/* rx buffer addr */
+		rxptr = x86emu_read_byte(emu, ch1_ptr + 12) << 16; // buffer addr hi
+		rxptr |= x86emu_read_word(emu, ch1_ptr + 10); // buffer addr lo
+		rxptr += inptr;
+
+		fprintf(stderr, "EMU: IN: {0x%x} {0x%02x}\n", rxptr, c);
+
+		if (c == '\n')
+			c = '\r';
+		x86emu_write_byte(emu, rxptr, c);
+
+		inptr++;
+		if (inptr >= x86emu_read_byte(emu, ch1_ptr + 13)) // length
+			inptr = 0; /* wrap around */
+		x86emu_write_word(emu, ch1_ptr + 15, inptr); // input pointer
+	}
+}
+
+
 static void
 pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 {
 	xprintf ("[0x1fffc]  0x%04x Initialization Register\n", ptr);
 	ptr += pcmd1(emu, ptr, printonly, "System Registers");
+	ch1_ptr = ptr;
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 0");
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 1");
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 2");
@@ -701,17 +790,23 @@ pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 static void
 ckcmd(x86emu_t *emu)
 {
-	unsigned ptr = x86emu_read_word(emu, 0x1fffc);
 	static unsigned oldcmd = 0;
 	unsigned newcmd;
-	
+	unsigned ptr;
+
+	ptr = x86emu_read_word(emu, 0x1fffc);
+	ptr |= x86emu_read_word(emu, 0x1fffe) << 16;
+
+	if (ptr)
+		x86emu_write_byte(emu, ptr, 0x32);
+
 	pnewcmd = ptr + 5;
 	newcmd = x86emu_read_byte(emu, pnewcmd);
 
 	if (newcmd == oldcmd)
 		return;
 
-	xprintf("=== COMMAND %d -> %d {0x%05x} ===\n", oldcmd, newcmd, pnewcmd);
+	xprintf("=== COMMAND %d -> %d {0x%05x} === {ptr=0x%02x} ===\n", oldcmd, newcmd, pnewcmd, ptr);
 	oldcmd = newcmd;
 
 	pcmd(emu, ptr, 0);
@@ -758,6 +853,12 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 {
 	unsigned ret;
 
+	if (type == (X86EMU_MEMIO_W | X86EMU_MEMIO_8) && addr >= 0x80000 && addr < romstart) {
+		/* V1.3 firmware does this during memory sizing. */
+		xprintf ("UNMAPPED MEM WRITE8 0x%04x\n", addr);
+		return 0;
+	}
+
 	switch (type) {
 	case X86EMU_MEMIO_8 | X86EMU_MEMIO_I:
 		*val = 0xff;
@@ -784,7 +885,8 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			return 0;
 		case 0x0060: // 2
 			//*val = 0x0000; // FAILED POWER-UP TEST 2
-			*val = 0xfdff;
+			//*val = 0xfdff;
+			*val = 0x0000;
 			if (warm)
 				*val |= 0x0200; // warm start bit
 
@@ -826,6 +928,11 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			xprintf ("WRITE8 0x%04x <- 0x%02x PIC - ICW2, ICW3, ICW4, or OCW1\n", addr, *val);
 			return 0;
 
+		case 0x0040: // 0x00
+			// UNKNOWN_PORT_40 sdx
+			xprintf ("WRITE8 0x%04x <- 0x%02x SDX UNKNOWN PORT\n", addr, *val);
+			return 0;
+
 		case 0x0050:
 			// Z80A I/O Processor Chan att.
 			xprintf ("WRITE8 0x%04x <- 0x%02x Z80A I/O Processor Chan att.\n", addr, *val);
@@ -837,6 +944,14 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			// ccpm, also16
 			xprintf ("WRITE8 0x%04x <- 0x%02x Control Bits Port\n", addr, *val);
 			return 0;
+
+
+		case 0x0070: // sdx 0x00
+			// MMU - Clear Violation Port ?
+			xprintf ("WRITE8 0x%04x <- 0x%02x MMU - Clear Violation Port\n", addr, *val);
+			return 0;
+
+
 		case 0x0082: // <- 0x13
 			// PIC - ICW1, OCW2, or OCW3
 			xprintf ("WRITE8 0x%04x <- 0x%02x PIC - ICW1, OCW2, or OCW3\n", addr, *val);
@@ -937,8 +1052,18 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 		break;
 	}
 
+	//if (type == (X86EMU_MEMIO_R | X86EMU_MEMIO_16) && addr == ch1_ptr + 15) {
+		if (term) {
+			x86emu_stop (emu);
+			return 0;
+		}
+		tryrx();
+	//}
+
 	ret = orig_memio(emu, addr, val, type);
 
+#if 0
+	// EMU:    15 0x042b   0x0000 Receive Buffer Input Pointer Register
 	if (type == (X86EMU_MEMIO_R | X86EMU_MEMIO_16) && addr == 0x042b) {
 		int c;
 
@@ -974,6 +1099,7 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 		//*val = 1;
 		//x86emu_stop (emu);
 	}
+#endif
 
 
 	if (type == (X86EMU_MEMIO_W | X86EMU_MEMIO_8) && pnewcmd && addr == pnewcmd) {
@@ -996,12 +1122,13 @@ cleanup(void)
 {
 	if (orig_tio) {
 		if (tcsetattr(STDIN_FILENO, TCSANOW, orig_tio) == -1)
-			perror("tcsetattr");
+			perror("cleanup: tcsetattr");
 		orig_tio = NULL;
 	}
 
 	if (emu) {
 		x86emu_dump (emu, X86EMU_DUMP_DEFAULT | X86EMU_DUMP_ACC_MEM);
+		//x86emu_dump (emu, X86EMU_DUMP_DEFAULT);
 		x86emu_clear_log (emu, 1);
 		x86emu_done (emu);
 		emu = NULL;
@@ -1020,6 +1147,20 @@ sigint1 (int signum)
 {
 	term = 1;
 	signal(SIGINT, sigint2);
+}
+
+static void
+sighup2 (int signum)
+{
+	cleanup();
+	signal(SIGHUP, SIG_DFL);
+}
+
+static void
+sighup1 (int signum)
+{
+	term = 1;
+	signal(SIGHUP, sighup2);
 }
 
 int
@@ -1045,8 +1186,8 @@ main (int argc, char *argv[])
 
 	emu = x86emu_new (X86EMU_PERM_R | X86EMU_PERM_W | X86EMU_PERM_X, 0);
 
-	/* log buf size of 1000000 is purely arbitrary */
-	x86emu_set_log (emu, 1000000, flush_log);
+	//x86emu_set_log (emu, 1000000, flush_log);
+	x86emu_set_log (emu, 10000000, flush_log);
 
 	x86emu_set_seg_register (emu, emu->x86.R_CS_SEL, 0xf000);
 	emu->x86.R_IP = 0xfff0;
@@ -1062,16 +1203,16 @@ main (int argc, char *argv[])
 	}
 	switch (statbuf.st_size) {
 	case 0x2000:
-		addr = 0xfe000;
+		romstart = 0xfe000;
 		break;
 	case 0x4000:
-		addr = 0xfc000;
+		romstart = 0xfc000;
 		break;
 	default:
 		fprintf(stderr, "Wrong file size: %ld\n", statbuf.st_size);
 		return 1;
 	}
-	for (; addr <= 0xfffff; addr++) {
+	for (addr = romstart; addr <= 0xfffff; addr++) {
 		switch (read(f, &c, 1)) {
 		case 0:
 			break;
@@ -1134,6 +1275,7 @@ main (int argc, char *argv[])
 	}
 
 	signal(SIGINT, sigint1);
+	signal(SIGHUP, sighup1);
 	while (!term) {
 		if (emu->max_instr == 0) {
 			emu->max_instr = emu->x86.R_TSC;
@@ -1142,6 +1284,11 @@ main (int argc, char *argv[])
 		ret = x86emu_run (emu, flags);
 
 		if (ret == X86EMU_RUN_MAX_INSTR) {
+			if (emu->x86.R_CS == 0x6000 && emu->x86.R_IP >= 0x042a && emu->x86.R_IP <= 0x042d) {
+				xprintf("Fatal error.\n");
+				break;
+			}
+
 			if (emu->x86.R_IP >= 0x228f && emu->x86.R_IP <= 0x2291) {
 				/* Timer test. We're in the loop that awaits the interrupt IR1.
 				 * Fire it now. */
