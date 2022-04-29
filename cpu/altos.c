@@ -863,13 +863,11 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 	case X86EMU_MEMIO_8 | X86EMU_MEMIO_I:
 		*val = 0xff;
 		switch (addr) {
-#if 0
 		case 0x0105:
 			// "PIT - Counter 1"
-			printf ("READ8 0x%04x -> 0x%02x PIT - Counter 1\n", addr, *val);
-			x86emu_stop (emu);
+			xprintf ("READ8 0x%04x -> 0x%02x PIT - Counter 1\n", addr, *val);
+			//x86emu_stop (emu);
 			break;
-#endif
 		default:
 			printf ("BAD READ8 0x%04x\n", addr);
 			x86emu_stop (emu);
@@ -908,9 +906,9 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 				char flags[9];
 
 				mmuflags(flags, *val);
-				xprintf ("MMU READ16 0x%04x -> 0x%02x [base=%05x target=%05x flags=%s]\n",
+				xprintf ("MMU READ16 0x%04x -> 0x%04x [base=%05x target=%05x flags=%s]\n",
 					addr, *val, base, target, flags);
-				mmu[(addr >> 1) & 0xff] = *val;
+				*val = mmu[(addr >> 1) & 0xff];
 				return 0;
 			}
 
@@ -1040,13 +1038,13 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 				char flags[9];
 
 				mmuflags(flags, *val);
-				xprintf ("WRITE16 0x%04x <- 0x%02x [base=%05x target=%05x flags=%s] MMU\n",
+				xprintf ("MMU WRITE16 0x%04x <- 0x%02x [base=%05x target=%05x flags=%s]\n",
 					addr, *val, base, target, flags);
 				mmu[(addr >> 1) & 0xff] = *val;
 				return 0;
 			}
 
-			printf ("BAD WRITE16 0x%04x <- 0x%02x\n", addr, *val);
+			printf ("BAD WRITE16 0x%04x <- 0x%04x\n", addr, *val);
 			x86emu_stop (emu);
 		}
 		break;
@@ -1284,12 +1282,14 @@ main (int argc, char *argv[])
 		ret = x86emu_run (emu, flags);
 
 		if (ret == X86EMU_RUN_MAX_INSTR) {
+			// SDX diagnostics
 			if (emu->x86.R_CS == 0x6000 && emu->x86.R_IP >= 0x042a && emu->x86.R_IP <= 0x042d) {
 				xprintf("Fatal error.\n");
 				break;
 			}
 
-			if (emu->x86.R_IP >= 0x228f && emu->x86.R_IP <= 0x2291) {
+			if ((emu->x86.R_IP >= 0x228f && emu->x86.R_IP <= 0x2291) || // a2.2
+				(emu->x86.R_IP >= 0x021a && emu->x86.R_IP <= 0x021c)) { // V1.3
 				/* Timer test. We're in the loop that awaits the interrupt IR1.
 				 * Fire it now. */
 				x86emu_intr_raise(emu, 32 + 1, INTR_TYPE_SOFT, 0);
@@ -1302,7 +1302,8 @@ main (int argc, char *argv[])
 				poll(&fds, 1, 10000);
 			}
 		} else {
-			if (emu->x86.R_IP == 0x228a) {
+			if ((emu->x86.R_IP == 0x228a) || // a2.2
+				(emu->x86.R_IP == 0x0215)) { // V1.3
 				/* Timer test. Run a little more and then fire an interrupt. */
 				emu->max_instr = emu->x86.R_TSC + 10;
 			} else {
