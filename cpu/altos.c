@@ -482,6 +482,7 @@ trytx (x86emu_t *emu, unsigned ptr)
 static unsigned
 pchcmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 {
+	unsigned parms = x86emu_read_byte(emu, ptr + 0);
 	unsigned cmd = x86emu_read_byte(emu, ptr + 4);
 
 	/* Busy bit not on */
@@ -489,23 +490,33 @@ pchcmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		goto out;
 
 	xprintf ("[%s] {0x%04x}\n", name, ptr);
-	xprintf ("    0 0x%04x   0x%04x Channel Parameter Register\n",			ptr + 0, x86emu_read_word(emu, ptr + 0));
+	xprintf ("    0 0x%04x   0x%04x Channel Parameter Register\n",			ptr + 0, parms);
 	xprintf ("    2 0x%04x   0x%04x Channel Status Register\n",			ptr + 2, x86emu_read_word(emu, ptr + 2));
 	xprintf ("    4 0x%04x     0x%02x Channel Command Register\n",			ptr + 4, cmd);
 	xprintf ("    5 0x%04x 0x%02x%02x%02x Transmit Data Buffer Address Register\n",	ptr + 5,
 		x86emu_read_byte(emu, ptr + 7),
 		x86emu_read_byte(emu, ptr + 6),
 		x86emu_read_byte(emu, ptr + 5));
-	xprintf ("    8 0x%04x   0x%04x Transmit Data Buffer Length Register\n",		ptr + 8, x86emu_read_word(emu, ptr + 8));
-	xprintf ("   10 0x%04x 0x%02x%02x%02x Receive Data Buffer Address Register\n",	ptr + 10,
-		x86emu_read_byte(emu, ptr + 12),
-		x86emu_read_byte(emu, ptr + 11),
-		x86emu_read_byte(emu, ptr + 10));
-	xprintf ("   13 0x%04x   0x%04x Receive Data Buffer Length Register\n",		ptr + 13, x86emu_read_word(emu, ptr + 13));
-	xprintf ("   15 0x%04x   0x%04x Receive Buffer Input Pointer Register\n",	ptr + 15, x86emu_read_word(emu, ptr + 15));
-	xprintf ("   17 0x%04x   0x%04x Receive Buffer Output Pointer Register\n",	ptr + 17, x86emu_read_word(emu, ptr + 17));
-	xprintf ("   19 0x%04x     0x%02x TTY Receive Register\n",			ptr + 19, x86emu_read_byte(emu, ptr + 19));
-	xprintf ("   20 0x%04x   0x%04x Selectable Rate Register\n",			ptr + 20, x86emu_read_word(emu, ptr + 20));
+	xprintf ("    8 0x%04x   0x%04x Transmit Data Buffer Length Register\n",	ptr + 8, x86emu_read_word(emu, ptr + 8));
+
+	if (parms & 0x0080) {
+		xprintf ("   10 0x%04x 0x%02x%02x%02x Receive Data Buffer Address Register\n",	ptr + 10,
+			x86emu_read_byte(emu, ptr + 12),
+			x86emu_read_byte(emu, ptr + 11),
+			x86emu_read_byte(emu, ptr + 10));
+		xprintf ("   13 0x%04x   0x%04x Receive Data Buffer Length Register\n",		ptr + 13, x86emu_read_word(emu, ptr + 13));
+		xprintf ("   15 0x%04x   0x%04x Receive Buffer Input Pointer Register\n",	ptr + 15, x86emu_read_word(emu, ptr + 15));
+		xprintf ("   17 0x%04x   0x%04x Receive Buffer Output Pointer Register\n",	ptr + 17, x86emu_read_word(emu, ptr + 17));
+	} else {
+		xprintf ("   10 0x%04x   0x%04x Unused\n",					ptr + 10, x86emu_read_word(emu, ptr + 10));
+		xprintf ("   12 0x%04x   0x%04x Unused\n",					ptr + 12, x86emu_read_word(emu, ptr + 12));
+		xprintf ("   14 0x%04x   0x%04x Unused\n",					ptr + 14, x86emu_read_word(emu, ptr + 14));
+		xprintf ("   16 0x%04x   0x%04x Unused\n",					ptr + 16, x86emu_read_word(emu, ptr + 16));
+		xprintf ("   18 0x%04x     0x%02x TTY Receive Register\n",			ptr + 18, x86emu_read_byte(emu, ptr + 18));
+	}
+
+	xprintf ("   19 0x%04x   0x%04x Selectable Rate Register\n",			ptr + 19, x86emu_read_word(emu, ptr + 19));
+	xprintf ("   21 0x%04x     0x%02x Reserved\n",					ptr + 21, x86emu_read_byte(emu, ptr + 21));
 
 	if (cmd & 0x80) xprintf ("0x80 command valid\n");
 	if (cmd & 0x40) xprintf ("0x40 transmit interrupt enable\n");
@@ -751,23 +762,29 @@ tryrx (void)
 		// characters available
 		x86emu_write_word(emu, ch1_ptr + 2, x86emu_read_word(emu, ch1_ptr + 2) | 0x0100);
 
-		inptr = x86emu_read_word(emu, ch1_ptr + 15); // input pointer
+		if (x86emu_read_word(emu, ch1_ptr + 0) & 0x0080) {
+			/* Ring buffer input */
+			inptr = x86emu_read_word(emu, ch1_ptr + 15); // input pointer
 
-		/* rx buffer addr */
-		rxptr = x86emu_read_byte(emu, ch1_ptr + 12) << 16; // buffer addr hi
-		rxptr |= x86emu_read_word(emu, ch1_ptr + 10); // buffer addr lo
-		rxptr += inptr;
+			/* rx buffer addr */
+			rxptr = x86emu_read_byte(emu, ch1_ptr + 12) << 16; // buffer addr hi
+			rxptr |= x86emu_read_word(emu, ch1_ptr + 10); // buffer addr lo
+			rxptr += inptr;
 
-		fprintf(stderr, "EMU: IN: {0x%x} {0x%02x}\n", rxptr, c);
+			fprintf(stderr, "EMU: IN: {0x%x} {0x%02x}\n", rxptr, c);
+			if (c == '\n')
+				c = '\r';
+			x86emu_write_byte(emu, rxptr, c);
 
-		if (c == '\n')
-			c = '\r';
-		x86emu_write_byte(emu, rxptr, c);
-
-		inptr++;
-		if (inptr >= x86emu_read_byte(emu, ch1_ptr + 13)) // length
-			inptr = 0; /* wrap around */
-		x86emu_write_word(emu, ch1_ptr + 15, inptr); // input pointer
+			inptr++;
+			if (inptr >= x86emu_read_byte(emu, ch1_ptr + 13)) // length
+				inptr = 0; /* wrap around */
+			x86emu_write_word(emu, ch1_ptr + 15, inptr); // input pointer
+		} else {
+			/* Unbuffered input */
+			fprintf(stderr, "EMU: IN: {unbuffered} {0x%02x}\n", c);
+			x86emu_write_byte(emu, ch1_ptr + 18, c);
+		}
 	}
 }
 

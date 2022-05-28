@@ -47,13 +47,17 @@ struc SIO_REGS
 .TX_LO:			resb 1		; Transmit Data Buffer Address Register LO
 .TX_HI:			resw 1		; Transmit Data Buffer Address Register HI
 .TX_LEN:		resw 1		; Transmit Data Buffer Length Register
+
+; These fields are used only in the bufferred input mode.
+; The firmware only uses the buffered mode, not the TTY mode.
 .RX_LO:			resw 1		; Receive Data Buffer Address Register LO
 .RX_HI:			resb 1		; Receive Data Buffer Address Register HI
 .RX_LEN:		resw 1		; Receive Data Buffer Length Register
 .RX_IN:			resw 1		; Receive Buffer Input Pointer Register
 .RX_OUT:		resw 1		; Receive Buffer Output Pointer Register
-.RX_TTY:		resb 1		; TTY Receive Register
+
 .RATE:			resw 1		; Selectable Rate Register
+.RESERVED:		resb 1		; Not used
 endstruc
 
 ; Floppy channel command register
@@ -3741,8 +3745,8 @@ SIO_CHAN_0 istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_0_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 SIO_CHAN_1 istruc SIO_REGS
@@ -3757,8 +3761,8 @@ SIO_CHAN_1 istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_1_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 SIO_CHAN_2 istruc SIO_REGS
@@ -3773,8 +3777,8 @@ SIO_CHAN_2 istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_2_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 istruc SIO_REGS
@@ -3789,8 +3793,8 @@ istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_3_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 istruc SIO_REGS
@@ -3805,8 +3809,8 @@ istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_4_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 istruc SIO_REGS
@@ -3821,8 +3825,8 @@ istruc SIO_REGS
 	at SIO_REGS.RX_LEN,	dw SIO_5_RX_LEN
 	at SIO_REGS.RX_IN,	dw 0
 	at SIO_REGS.RX_OUT,	dw 0
-	at SIO_REGS.RX_TTY,	db 0
 	at SIO_REGS.RATE,	dw 0
+	at SIO_REGS.RESERVED,	db 0
 iend
 
 FDC_CHAN istruc FDC_REGS
