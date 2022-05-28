@@ -1930,6 +1930,20 @@ loc_FEDAD:
 loc_FEDBF:
 		cmp	byte [bp+DO_AUTO_BOOT], 0
 		jnz	short NO_AUTO_BOOT
+
+%ifdef HACKS
+		; On automatic boot, try Floppy Disk first
+		mov	di, STR_BOOT_FDD
+		push	di
+		call	PUTS
+		add	sp, 2
+		call	I8089_DO_IO
+		sub	di, di
+		push	di
+		call	DISK_BOOT
+		; Then try Hard Drive
+%endif
+
 		mov	di, STR_BOOT_HDD ; "\nBooting from Hard Disk"
 		push	di
 		call	PUTS
@@ -3879,7 +3893,8 @@ STR_BREAK		db 0Ah
 REG_NAMES		db "AX", "BX", "CX", "DX", "SI", "DI"
 			db "DS", "ES", "SS", "SP", "BP", "FL"
 STR_BOOT_INTERRUPT	db 0Ah,"Press any key to interrupt boot",0Ah,0
-STR_BOOT_HDD		db 0Ah,"Booting from Hard Disk",0
+STR_BOOT_FDD		db 0Ah,"Boot from Floppy...",0
+STR_BOOT_HDD		db 0Ah,"Boot from Hard Disk...",0
 STR_BOOT_PROMPT		db 0Ah
 			db "Enter [1] to boot from Hard Disk",0Ah
 			db "Enter [2] to boot from Floppy Disk",0Ah
