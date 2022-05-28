@@ -13,9 +13,10 @@ CHAN_RX_MID	db ?			; Receive Data Buffer Address Register MID
 CHAN_RX_HI	db ?			; Receive Data Buffer Address Register HI
 CHAN_RX_LEN	dw ?			; Receive Data Buffer Length Register
 CHAN_RX_IN	dw ?			; Receive Buffer Input Pointer Register
-CHAN_RX_OUT	dw ?			; Receive Buffer Output	Pointer	Register
-CHAN_RX_TTY	db ?			; TTY Receive Register
-CHAN_RATE	dw ?			; Selectable Rate Register
+CHAN_RX_OUT_TTY	dw ?			; Receive Buffer Output	Pointer	Register (buffered mode)
+					; TTY Receive Register (tty mode)
+CHAN_RATE	dw ?			; Selectable baud rate
+CHAN_RESERVED	db ?
 CHAN_REGS	ends
 
 ; ───────────────────────────────────────────────────────────────────────────
@@ -3276,7 +3277,8 @@ BUFFER		= word ptr  8
 		cmp	cx, [bp+LEN]
 		jnb	short loc_FF1F1
 		mov	dx, [si+CHAN_REGS.CHAN_RX_LEN] ; Receive Data Buffer Length Register
-		mov	ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer	Output Pointer Register
+		mov	ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		mov	di, word ptr [si+CHAN_REGS.CHAN_RX_LO] ; Receive Data Buffer Address Register LO
 		add	di, ax
 
@@ -3285,7 +3287,8 @@ WAIT_FOR_IO:				; CODE XREF: SIO_RX+34j SIO_RX+39j ...
 		mov	ax, [si+CHAN_REGS.CHAN_RX_IN] ;	Receive	Buffer Input Pointer Register
 		test	ax, ax
 		js	short WAIT_FOR_IO
-		cmp	ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer	Output Pointer Register
+		cmp	ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		jz	short WAIT_FOR_IO
 		mov	ax, [si+CHAN_REGS.CHAN_STAT] ; Channel Status Register
 		and	ax, 0F0h
@@ -3298,11 +3301,14 @@ WAIT_FOR_IO:				; CODE XREF: SIO_RX+34j SIO_RX+39j ...
 
 loc_FF1C0:				; CODE XREF: SIO_RX+41j SIO_RX+74j
 		mov	al, [di]
-		inc	[si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+		inc	[si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer	Output Pointer Register	(buffered mode)
+					; TTY Receive Register (tty mode)
 		inc	di
-		cmp	[si+CHAN_REGS.CHAN_RX_OUT], dx ; Receive Buffer	Output Pointer Register
+		cmp	[si+CHAN_REGS.CHAN_RX_OUT_TTY],	dx ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		jb	short loc_FF1D3
-		mov	[si+CHAN_REGS.CHAN_RX_OUT], 0 ;	Receive	Buffer Output Pointer Register
+		mov	[si+CHAN_REGS.CHAN_RX_OUT_TTY],	0 ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		mov	di, word ptr [si+CHAN_REGS.CHAN_RX_LO] ; Receive Data Buffer Address Register LO
 
 loc_FF1D3:				; CODE XREF: SIO_RX+57j
@@ -3316,7 +3322,8 @@ loc_FF1DC:				; CODE XREF: SIO_RX+6Fj
 		mov	ax, [si+CHAN_REGS.CHAN_RX_IN] ;	Receive	Buffer Input Pointer Register
 		test	ax, ax
 		js	short loc_FF1DC
-		cmp	ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer	Output Pointer Register
+		cmp	ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		jnz	short loc_FF1C0
 		mov	[si+CHAN_REGS.CHAN_CMD], 83h ; 'â' ; Channel Command Register
 		call	NEW_COMMAND
@@ -3337,7 +3344,8 @@ loc_FF1FF:				; CODE XREF: SIO_RX+92j
 		mov	bx, [si+CHAN_REGS.CHAN_RX_IN] ;	Receive	Buffer Input Pointer Register
 		test	bx, bx
 		js	short loc_FF1FF
-		cmp	bx, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer	Output Pointer Register
+		cmp	bx, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered mode)
+					; TTY Receive Register (tty mode)
 		jnz	short SIO_RX_DONE
 		xor	al, al
 

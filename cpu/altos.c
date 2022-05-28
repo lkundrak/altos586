@@ -644,7 +644,7 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	static unsigned char fdparms[64] = { 0, };
 	unsigned cmd = x86emu_read_byte(emu, ptr + 0);
 	unsigned ptr2, ptr3;
-	unsigned cnt;
+	unsigned cnt, start, end;
 	int i;
 
 	/* Busy bit not on */
@@ -658,13 +658,15 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	ptr2 = x86emu_read_byte(emu, ptr + 2);
 	ptr2 |= x86emu_read_byte(emu, ptr + 3) << 8;
 	ptr2 |= x86emu_read_byte(emu, ptr + 4) << 16;
-	xprintf ("    2 0x%04x   0x%06x Comm Buffer\n", ptr + 2, ptr2);
+	xprintf ("    2 0x%04x   0x%06x Queue Pointer\n", ptr + 2, ptr2);
 
-	xprintf ("    5 0x%04x       0x%02x Unknown\n",	ptr + 5,  x86emu_read_byte(emu, ptr + 5));
+	cnt = x86emu_read_byte(emu, ptr + 5);
+	end = x86emu_read_byte(emu, ptr + 6);
+	start = x86emu_read_byte(emu, ptr + 7);
 
-	cnt = x86emu_read_byte(emu, ptr + 6);
-	xprintf ("    6 0x%04x       0x%02x Comm Count\n",	ptr + 6,  cnt);
-	xprintf ("    7 0x%04x       0x%02x Comm Done\n",	ptr + 7,  x86emu_read_byte(emu, ptr + 7));
+	xprintf ("    5 0x%04x       0x%02x Queue Length\n",	ptr + 5,  cnt);
+	xprintf ("    6 0x%04x       0x%02x Queue End\n",	ptr + 6,  end);
+	xprintf ("    7 0x%04x       0x%02x Queue Start\n",	ptr + 7,  start);
 	xprintf ("    8 0x%04x       0x%02x Unknown\n",	ptr + 8,  x86emu_read_byte(emu, ptr + 8));
 	xprintf ("    9 0x%04x       0x%02x Unknown\n",	ptr + 9,  x86emu_read_byte(emu, ptr + 9));
 
@@ -688,12 +690,22 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		int bad = 0;
 
 		xprintf ("    FLOPPY COMMAND SET\n");
-		for (i = 0; i < cnt; i++) {
-			ptr3 = x86emu_read_byte(emu, ptr2 + (4*i) + 0);
-			ptr3 |= x86emu_read_byte(emu, ptr2 + (4*i) + 1) << 8;
-			ptr3 |= x86emu_read_byte(emu, ptr2 + (4*i) + 2) << 16;
-			xprintf ("    [Floppy Command %d] {0x%04x:0x%04x}\n", i, ptr2 + (4*i), ptr3);
+		for (i = start; i != end;) {
+		//for (i = 0; i < (cnt ?: 1); i++) { // badbadbad
+			ptr3 = x86emu_read_byte(emu, ptr2 + 0);
+			ptr3 |= x86emu_read_byte(emu, ptr2 + 1) << 8;
+			ptr3 |= x86emu_read_byte(emu, ptr2 + 2) << 16;
+
+			xprintf ("    [Floppy Command %d] {0x%04x:0x%04x}\n", i, ptr2, ptr3);
 			bad |= fcmd(emu, ptr3, printonly, fdparms);
+			// break on bad???
+
+			i++;
+			ptr2 += 4;
+			if (i == cnt) {
+				i -= cnt;
+				ptr2 -= 4*cnt;
+			}
 		}
 
 		if (!printonly) {
@@ -703,17 +715,17 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 			} else {
 				x86emu_write_byte(emu, ptr + 1, 0x40);
 			}
-		}
 
-		x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
-		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
-		x86emu_write_byte(emu, ptr + 7, cnt); // commands done
-	} else if (cmd == 0x8f) {
-		// what is this
-		if (cnt == 0) {
 			x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
 			x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
-			x86emu_write_byte(emu, ptr + 7, cnt); // commands done
+			x86emu_write_byte(emu, ptr + 7, end); // commands done
+		}
+	} else if (cmd == 0x8f) {
+		// what is this
+		if (start == end) {
+			x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
+			x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
+			x86emu_write_byte(emu, ptr + 7, end); // commands done
 		} else {
 			printf ("\nBAD FLOPPY COMMAND: 0x%x cnt=%d\n", cmd, cnt);
 			x86emu_stop (emu);
@@ -1142,8 +1154,8 @@ cleanup(void)
 	}
 
 	if (emu) {
-		x86emu_dump (emu, X86EMU_DUMP_DEFAULT | X86EMU_DUMP_ACC_MEM);
-		//x86emu_dump (emu, X86EMU_DUMP_DEFAULT);
+		//x86emu_dump (emu, X86EMU_DUMP_DEFAULT | X86EMU_DUMP_ACC_MEM);
+		x86emu_dump (emu, X86EMU_DUMP_DEFAULT);
 		x86emu_clear_log (emu, 1);
 		x86emu_done (emu);
 		emu = NULL;

@@ -13,9 +13,10 @@
 0000000C CHAN_RX_HI	 db ?			 ; Receive Data	Buffer Address Register	HI
 0000000D CHAN_RX_LEN	 dw ?			 ; Receive Data	Buffer Length Register
 0000000F CHAN_RX_IN	 dw ?			 ; Receive Buffer Input	Pointer	Register
-00000011 CHAN_RX_OUT	 dw ?			 ; Receive Buffer Output Pointer Register
-00000013 CHAN_RX_TTY	 db ?			 ; TTY Receive Register
-00000014 CHAN_RATE	 dw ?			 ; Selectable Rate Register
+00000011 CHAN_RX_OUT_TTY dw ?			 ; Receive Buffer Output Pointer Register (buffered mode)
+00000011					 ; TTY Receive Register	(tty mode)
+00000013 CHAN_RATE	 dw ?			 ; Selectable baud rate
+00000015 CHAN_RESERVED	 db ?
 00000016 CHAN_REGS	 ends
 00000016
 00000000 ; ───────────────────────────────────────────────────────────────────────────
@@ -3292,7 +3293,8 @@ FE00:118C		  xor	  cx, cx
 FE00:118E		  cmp	  cx, [bp+LEN]
 FE00:1191		  jnb	  short	loc_FF1F1
 FE00:1193		  mov	  dx, [si+CHAN_REGS.CHAN_RX_LEN] ; Receive Data	Buffer Length Register
-FE00:1196		  mov	  ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+FE00:1196		  mov	  ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered	mode)
+FE00:1196					  ; TTY	Receive	Register (tty mode)
 FE00:1199		  mov	  di, word ptr [si+CHAN_REGS.CHAN_RX_LO] ; Receive Data	Buffer Address Register	LO
 FE00:119C		  add	  di, ax
 FE00:119E
@@ -3302,7 +3304,8 @@ FE00:119E		  call	  SIO_WAIT_READY
 FE00:11A1		  mov	  ax, [si+CHAN_REGS.CHAN_RX_IN]	; Receive Buffer Input Pointer Register
 FE00:11A4		  test	  ax, ax
 FE00:11A6		  js	  short	WAIT_FOR_IO
-FE00:11A8		  cmp	  ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+FE00:11A8		  cmp	  ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered	mode)
+FE00:11A8					  ; TTY	Receive	Register (tty mode)
 FE00:11AB		  jz	  short	WAIT_FOR_IO
 FE00:11AD		  mov	  ax, [si+CHAN_REGS.CHAN_STAT] ; Channel Status	Register
 FE00:11B0		  and	  ax, 0F0h
@@ -3316,11 +3319,14 @@ FE00:11C0
 FE00:11C0 loc_FF1C0:				  ; CODE XREF: SIO_RX+41j
 FE00:11C0					  ; SIO_RX+74j
 FE00:11C0		  mov	  al, [di]
-FE00:11C2		  inc	  [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+FE00:11C2		  inc	  [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered mode)
+FE00:11C2					  ; TTY	Receive	Register (tty mode)
 FE00:11C5		  inc	  di
-FE00:11C6		  cmp	  [si+CHAN_REGS.CHAN_RX_OUT], dx ; Receive Buffer Output Pointer Register
+FE00:11C6		  cmp	  [si+CHAN_REGS.CHAN_RX_OUT_TTY], dx ; Receive Buffer Output Pointer Register (buffered	mode)
+FE00:11C6					  ; TTY	Receive	Register (tty mode)
 FE00:11C9		  jb	  short	loc_FF1D3
-FE00:11CB		  mov	  [si+CHAN_REGS.CHAN_RX_OUT], 0	; Receive Buffer Output	Pointer	Register
+FE00:11CB		  mov	  [si+CHAN_REGS.CHAN_RX_OUT_TTY], 0 ; Receive Buffer Output Pointer Register (buffered mode)
+FE00:11CB					  ; TTY	Receive	Register (tty mode)
 FE00:11D0		  mov	  di, word ptr [si+CHAN_REGS.CHAN_RX_LO] ; Receive Data	Buffer Address Register	LO
 FE00:11D3
 FE00:11D3 loc_FF1D3:				  ; CODE XREF: SIO_RX+57j
@@ -3334,7 +3340,8 @@ FE00:11DC loc_FF1DC:				  ; CODE XREF: SIO_RX+6Fj
 FE00:11DC		  mov	  ax, [si+CHAN_REGS.CHAN_RX_IN]	; Receive Buffer Input Pointer Register
 FE00:11DF		  test	  ax, ax
 FE00:11E1		  js	  short	loc_FF1DC
-FE00:11E3		  cmp	  ax, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+FE00:11E3		  cmp	  ax, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered	mode)
+FE00:11E3					  ; TTY	Receive	Register (tty mode)
 FE00:11E6		  jnz	  short	loc_FF1C0
 FE00:11E8		  mov	  [si+CHAN_REGS.CHAN_CMD], 83h ; 'â' ; Channel Command Register
 FE00:11EC		  call	  NEW_COMMAND
@@ -3356,7 +3363,8 @@ FE00:11FF loc_FF1FF:				  ; CODE XREF: SIO_RX+92j
 FE00:11FF		  mov	  bx, [si+CHAN_REGS.CHAN_RX_IN]	; Receive Buffer Input Pointer Register
 FE00:1202		  test	  bx, bx
 FE00:1204		  js	  short	loc_FF1FF
-FE00:1206		  cmp	  bx, [si+CHAN_REGS.CHAN_RX_OUT] ; Receive Buffer Output Pointer Register
+FE00:1206		  cmp	  bx, [si+CHAN_REGS.CHAN_RX_OUT_TTY] ; Receive Buffer Output Pointer Register (buffered	mode)
+FE00:1206					  ; TTY	Receive	Register (tty mode)
 FE00:1209		  jnz	  short	SIO_RX_DONE
 FE00:120B		  xor	  al, al
 FE00:120D

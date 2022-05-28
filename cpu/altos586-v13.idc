@@ -156,12 +156,11 @@ static Structures_0(id) {
 	SetMemberComment(id,	0XD,	"Receive Data Buffer Length Register",	1);
 	AddStrucMember(id,"CHAN_RX_IN",	0XF,	0x10000400,	-1,	2);
 	SetMemberComment(id,	0XF,	"Receive Buffer Input Pointer Register",	1);
-	AddStrucMember(id,"CHAN_RX_OUT",	0X11,	0x10000400,	-1,	2);
-	SetMemberComment(id,	0X11,	"Receive Buffer Output Pointer Register",	1);
-	AddStrucMember(id,"CHAN_RX_TTY",	0X13,	0x000400,	-1,	1);
-	SetMemberComment(id,	0X13,	"TTY Receive Register",	1);
-	AddStrucMember(id,"CHAN_RATE",	0X14,	0x10000400,	-1,	2);
-	SetMemberComment(id,	0X14,	"Selectable Rate Register",	1);
+	AddStrucMember(id,"CHAN_RX_OUT_TTY",	0X11,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X11,	"Receive Buffer Output Pointer Register (buffered mode)\nTTY Receive Register (tty mode)",	1);
+	AddStrucMember(id,"CHAN_RATE",	0X13,	0x10000400,	-1,	2);
+	SetMemberComment(id,	0X13,	"Selectable baud rate",	1);
+	AddStrucMember(id,"CHAN_RESERVED",	0X15,	0x000400,	-1,	1);
 	
 	id = GetStrucIdByName("IOP8089_SCP");
 	AddStrucMember(id,"BUS_TYPE",	0X0,	0x000400,	-1,	1);

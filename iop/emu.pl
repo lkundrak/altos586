@@ -779,7 +779,12 @@ while (1) {
 		if ($insncnt == 300000) {
 			trace '=== FDC UNK 0 ===';
 
-			foreach (0..0) {
+			foreach (0..10) {
+				$busmem{0x13020+4*$_} = $_;
+				$busmem{0x13021+4*$_} = 0xa5;
+				$busmem{0x13022+4*$_} = 0x01;
+			}
+			foreach (0..2) {
 				$busmem{0x13020+4*$_} = 0x20;
 				$busmem{0x13021+4*$_} = 0x10;
 				$busmem{0x13022+4*$_} = 0x01;
@@ -807,16 +812,19 @@ while (1) {
 #			$busmem{0x4a7} = 0x00;  # number of entries processed <-- 0x01 on done
 
 
-			$busmem{0x4a0} = 0x8f; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
+			#$busmem{0x4a0} = 0x8f; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
+			$busmem{0x4a0} = 0x88; # Command 88-8c-8f=f8=c8=cf 83-3f-0f-f0-00-not
 			$busmem{0x4a1} = 0x00; # Status <-- 0x08 then 0x00 on all done
 
-			$busmem{0x4a2} = 0x5a;	# commands
-			$busmem{0x4a3} = 0xa5;
+			$busmem{0x4a2} = 0x20; #0x5a;	# commands
+			$busmem{0x4a3} = 0x30; #0xa5;
+			#$busmem{0x4a2} = 0x5a;	# commands
+			#$busmem{0x4a3} = 0xa5;
 			$busmem{0x4a4} = 0x01;
 
-			$busmem{0x4a5} = 0x02;
-			$busmem{0x4a6} = 0x00;	# number of entries at above address
-			$busmem{0x4a7} = 0x00;  # number of entries processed <-- 0x01 on done
+			$busmem{0x4a5} = 0x03;  # queue length
+			$busmem{0x4a6} = 0x00;	# next queue entry
+			$busmem{0x4a7} = 0x01;  # last queue entry
 
 			$busmem{0x41b}++; # New Command Register
 		}

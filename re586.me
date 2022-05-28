@@ -5,7 +5,7 @@
 .(l C
 .b "Notes on the Altos 586 System Board"
 .sp  2
-Work in progress, May 2022
+Work in progress, June 2022
 by Lubomir Rintel
 .)l
 .sp  2
@@ -117,9 +117,10 @@ and
 .i "Side Select"
 signals are also both controlled by the PIO.
 
-For the details about the afforementioned control lines consult the paragraph on
+For the details about the control lines consult the paragraph on
 the Parallel I/O Controller below.
 
+.bp
 .sh 2 "Parallel I/O Controller"
 
 For the most part, the pins I've traced out are related to the floppy
@@ -208,13 +209,14 @@ Offset          | Size          | Description                   | Typical Value
 _
 +00h            | BYTE          | Command                       | 87h, 88h, .\~.\~.
 +01h            | BYTE          | Status                        | 00h, 48h, 40h, C0h, .\~.\~.
-+02h \[en] +04h | BYTE[3]       | Floppy Command Queue Address  | T{
++02h \[en] +04h | BYTE[3]       | Next Floppy Command Pointer   | T{
 Pointer to
 .i "Floppy Command Queue"
+entry
 T}
-+05h            | BYTE          | Unknown                       | 20h
-+06h            | BYTE          | Floppy Command Queue Size     |
-+07h            | BYTE          | Floppy Command Queue Pointer  |
++05h            | BYTE          | Floppy Command Queue Size     | 02h
++06h            | BYTE          | Last Floppy Command Index     | 01h
++07h            | BYTE          | Next Floppy Command Index     | 00h
 +08h            | BYTE          | Unused                        | 00h
 +09h            | BYTE          | Unused                        | 00h
 +0Ah \[en] +B3h | BYTE[32]      | Floppy 1 Parameters           | T{
@@ -227,7 +229,8 @@ T}
 
 .sh 2 "Floppy Drive Interface Commands"
 
-There are two known commands:
+There factory software has been seen issuing three different command,
+with two of them having known function:
 
 .TS
 doublebox nospaces allbox tab(|);
@@ -236,12 +239,15 @@ l|l.
 Command | Description
 87h     | Set Floppy Drive Parameters
 88h     | Submit Floppy Command Queue
+8fh     | Unknown
 .TE
 
 As with the other command blocks, the most significant bit indicates
 to the peripheral controller that there's a new command to process.
 Once the processing is finished, the peripheral controller sets the
 bit to zero.
+
+.sh 3 "Set Floppy Drive Parameters"
 
 The
 .i "Set Floppy Drive Parameters"
@@ -250,18 +256,37 @@ command reads the
 structure (see below) and saves it in the controller's SRAM.
 The other registers in the block are ignored.
 This command needs to be called to set the sector size before any
-Floppy I/O. Failure to set the sector size up will cause the read
+Floppy I/O.
+
+Failure to set the sector size up will cause the read
 commands to overflow a data buffer, corrupting the controller SRAM.
 The main processor firmware calls this command on startup.
 
+.sh 3 "Submit Floppy Command Queue"
+
 The
 .i "Submit Floppy Command Queue"
-command enqueues I/O commands for processing.
-The commands are described by the
-.i "Floppy Disk Interface Parameter Block"
-structure (described below). They are are pointed to from a
+command submits the
 .i "Floppy Command Queue"
-(also described below).
+for processing. Said queue is in fact a ring buffer whose entries
+are the addresses of 
+.i "Floppy Disk Interface Parameter Block"
+structures (described below).
+
+Upon submission, the processing starts with the entry on address in
+.i "Next Floppy Command Pointer". When the I/O processor handles
+an entry, it increments the next entry index, wrapping it around
+the queue size if necessary. The processing finishes once the next
+entry index is equal to the last entry index.
+
+Note that the I/O processor modifies the
+.i "Next Floppy Command Index" register
+when it finishes handlin an entry, but keeps the value in
+.i "Next Floppy Command Pointer"
+unchanged, while still using it to calculate the address of
+the next entry to process. When you submit another batch of commands When you submit another batch of commands
+you need to adjust it accordingly.
+
 This command doesn't use the
 .i "Floppy Parameters"
 in the register block, though it requires that the parameters are
@@ -269,9 +294,9 @@ set by the
 .i "Set Floppy Drive Parameters"
 previously.
 
+.bp
 .sh 2 "Floppy Parameters"
 
-.br
 Used to issue I/O commands, not used by
 .I "Set Parameters"
 command.
@@ -568,7 +593,7 @@ Create a queue with the three commands we created above:
 .br
   0000:2400  00-\f[CB]00\f[]		\f[I]First command at 00002100h\f[]
 .br
-  0000:2401  00-\f[CB]21\f[]		\f[I](Seek to track 5)\f[]
+  0000:2401  00-\f[CB]21\f[]		\f[I](See above: seek to track 5)\f[]
 .br
   0000:2402  00-\f[CB]00\f[]
 .br
@@ -576,7 +601,7 @@ Create a queue with the three commands we created above:
 .br
   0000:2404  00-\f[CB]00\f[]		\f[I]First command at 00002200h\f[]
 .br
-  0000:2405  00-\f[CB]22\f[]		\f[I](Seek to track 25h)\f[]
+  0000:2405  00-\f[CB]22\f[]		\f[I](See above: seek to track 25h)\f[]
 .br
   0000:2406  00-\f[CB]00\f[]
 .br
@@ -584,7 +609,7 @@ Create a queue with the three commands we created above:
 .br
   0000:2408  00-\f[CB]00\f[]		\f[I]First command at 00002300h\f[]
 .br
-  0000:2409  00-\f[CB]23\f[]		\f[I](Read from CHS 5/1/5 to 2500h)\f[]
+  0000:2409  00-\f[CB]23\f[]		\f[I](See above: read from CHS 5/1/5 to 2500h)\f[]
 .br
   0000:240A  00-\f[CB]00\f[]
 .br
@@ -606,11 +631,11 @@ Now invoke the queue the same way as we set the parameters:
 .br
   0000:04A4  00-\f[CB]00\f[]
 .br
-  0000:04A5  02-\f[CB]00\f[]
+  0000:04A5  02-\f[CB]04\f[]		\f[I]Queue Length\f[]
 .br
-  0000:04A6  00-\f[CB]03\f[]		\f[I]There are 0003h commands in the queue\f[]
+  0000:04A6  00-\f[CB]03\f[]		\f[I]Last valid command is 03h commands in the queue\f[]
 .br
-  0000:04A7  00-\f[CB]00\f[]
+  0000:04A7  00-\f[CB]00\f[]		\f[I]Start with the command 00h\f[]
 .br
   0000:04A8  00-\f[CB]00\f[]
 .br

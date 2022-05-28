@@ -69,9 +69,10 @@ struc FDC_REGS
 .COMMAND:		resb 1
 .STATUS:		resb 1
 .QUEUE_ADDR_LO:		resw 1
-.QUEUE_ADDR_HI:		resw 1
-.QUEUE_SIZE:		resb 1
-.QUEUE_PTR:		resb 1
+.QUEUE_ADDR_HI:		resb 1
+.QUEUE_LEN:		resb 1
+.QUEUE_END:		resb 1
+.QUEUE_NEXT:		resb 1
 .UNUSED1:		resb 1
 .UNUSED2:		resb 1
 .PARAMS_1:		resb 32
@@ -1379,8 +1380,8 @@ READ_SECTORS:
 		push	di
 		call	FDC_ENQUEUE_CMD
 		add	sp, 2
-		mov	byte [FDC_CHAN+FDC_REGS.QUEUE_SIZE], 1
-		mov	byte [FDC_CHAN+FDC_REGS.QUEUE_PTR], 0
+		mov	byte [FDC_CHAN+FDC_REGS.QUEUE_END], 1
+		mov	byte [FDC_CHAN+FDC_REGS.QUEUE_NEXT], 0
 		mov	byte [FDC_CHAN+FDC_REGS.COMMAND], FDC_BUSY | FDC_RUN_IO
 		inc	byte [NEW_CMD_REG]
 WAIT_FDC_NOT_BUSY:
@@ -1393,8 +1394,8 @@ WAIT_FOR_FDC_READY:
 		and	dx, 0Fh
 		jnz	short WAIT_FOR_FDC_READY
 WAIT_FOR_QUEUE_DRAIN:
-		mov	dl, [FDC_CHAN+FDC_REGS.QUEUE_SIZE]
-		cmp	[FDC_CHAN+FDC_REGS.QUEUE_PTR], dl
+		mov	dl, [FDC_CHAN+FDC_REGS.QUEUE_END]
+		cmp	[FDC_CHAN+FDC_REGS.QUEUE_NEXT], dl
 		jnz	short WAIT_FOR_QUEUE_DRAIN
 		cmp	byte [bp+STATUS], 0
 		jnz	short FDC_READ_FINISHED ; Error?
@@ -3833,9 +3834,10 @@ FDC_CHAN istruc FDC_REGS
 	at FDC_REGS.COMMAND,		db 0
 	at FDC_REGS.STATUS,		db 0
 	at FDC_REGS.QUEUE_ADDR_LO,	dw 0
-	at FDC_REGS.QUEUE_ADDR_HI,	dw 200h
-	at FDC_REGS.QUEUE_SIZE,		db 0
-	at FDC_REGS.QUEUE_PTR,		db 0
+	at FDC_REGS.QUEUE_ADDR_HI,	db 0
+	at FDC_REGS.QUEUE_LEN,		db 2
+	at FDC_REGS.QUEUE_END,		db 0
+	at FDC_REGS.QUEUE_NEXT,		db 0
 	at FDC_REGS.UNUSED1,		db 0
 	at FDC_REGS.UNUSED2,		db 0
 	at FDC_REGS.PARAMS_1
