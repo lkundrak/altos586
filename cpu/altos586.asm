@@ -1,3 +1,25 @@
+;========================================================================
+; Altos 586 Firmware							:
+;									:
+; Reconstructed soruce code from v1.3 firmware				:
+; Build with YASM:							:
+;									:
+;   yasm -o altos586.bin -l altos586.lst altos586.asm			:
+;========================================================================
+
+;------------------------------------------------------------------------
+; The v1.3 firmware is 8K in size, stored in 2 x 2732 ROM chips.	:
+;									:
+; The firmware is in the segment starting at FE00:0000.			:
+; The CPU board can also take 2764 chips, allowing for 16K firmware	:
+; starting at FC00:0000. Switching the ROMLEN macro to 4000h achieves	:
+; just that. The SYSCALL_ENTRY still needs to stay at FE00:0000 -- code	:
+; could be added or moved before that (see .code_low section).		:
+;------------------------------------------------------------------------
+;%define ROMLEN 04000h	; 16K image
+%define ROMLEN 02000h	; 8K image
+%define ROMSEG 10000h-(ROMLEN/16)
+
 ; I/O controller command register
 IOC_BUSY		equ 80h
 IOC_ENABLE		equ 01h
@@ -172,14 +194,28 @@ IOP3_PTR istruc I8089_CB
 	at I8089_CB.UNUSED2,	dw ?
 iend
 
-;========================================================================
-section .syscall start=0 align=1
-;------------------------------------------------------------------------
-; This is ABI and needs to be at FE00:000 no matter what.		:
-;------------------------------------------------------------------------
-SYSCALL_ENTRY:
-		jmp	DO_SYSCALL_ENTRY
 
+;========================================================================
+; When assembling for 16K ROM image, new code could be added to this	:
+; section.								:
+;========================================================================
+section .code_low align=1
+
+
+;========================================================================
+; This is ABI and needs to be at FE00:0000 no matter what.		:
+;========================================================================
+section .syscall start=ROMLEN-2000h align=1
+SYSCALL_ENTRY:
+%if ROMLEN == 02000h
+		jmp	DO_SYSCALL_ENTRY
+%else
+		jmp	ROMSEG:DO_SYSCALL_ENTRY
+%endif
+
+
+;========================================================================
+; Main code section.							:
 ;========================================================================
 section .code align=1
 POST:
@@ -194,11 +230,11 @@ POST:
 		jnz	short COLD_BOOT
 		jmp	WARM_POST
 COLD_BOOT:
-		mov	ax, 0FE00h	; Firmware start
+		mov	ax, ROMSEG	; Firmware start
 		mov	ds, ax
 		xor	bx, bx
 		xor	al, al
-		mov	cx, 2000h	; Firmware length
+		mov	cx, ROMLEN	; Firmware length
 CHECKSUM_NEXT_BYTE:
 		add	al, [bx]
 		inc	bx
@@ -568,7 +604,7 @@ loc_FE2A7:
 
 ;------------------------------------------------------------------------
 FINISH_POST:
-		mov	ax, 0FE00h
+		mov	ax, ROMSEG
 		mov	ds, ax
 		xor	ax, ax
 		mov	es, ax
@@ -845,7 +881,7 @@ I8089_DO_IO:
 		lea	si, [IOP_BLOCK]
 		mov	word [si], 6CAh
 		add	word [si], 17F0h
-		mov	word [si+2], 0FE00h
+		mov	word [si+2], ROMSEG
 		mov	ax, [SCB+I8089_SCB.CB_SEG]
 		mov	es, ax
 		mov	al, 3
@@ -3853,13 +3889,13 @@ STR_DONE		db " -Done",0
 ;========================================================================
 section .bss vfollows=.data align=1
 
-DISK_DATA_BUF		times 512 db ?
-byte_8CA		db ?
-byte_8CB		db ?
-word_8CC		dw ?
-word_8CE		times 17h dw ?
-FDC_QUEUE		dw ?
-			dw ?
+DISK_DATA_BUF	times 512 db ?
+byte_8CA	db ?
+byte_8CB	db ?
+word_8CC	dw ?
+word_8CE	times 17h dw ?
+FDC_QUEUE	dw ?
+		dw ?
 
 SIO_TX_BUFS:
 	times SIO_TX_LEN*6 db ?
@@ -3876,19 +3912,19 @@ SIO_4_RX_BUF:
 SIO_5_RX_BUF:
 	times SIO_5_RX_LEN db ?
 
-HEX_word_EB4		dw ?
-HEX_word_EB6		dw ?
-HEX_word_EB8		dw ?
-HEX_word_EBA		dw ?
-CHAR_BUF		db ?
-SAVED_SS		dw ?
-SAVED_SP		dw ?
-SAVED_ES		dw ?	; Saved on syscall entry
-MEM_SIZE		dw ?
-unk_EC5			db ?
-WHATS_CB_SEG		db ?
-POST_RESULT		db ?
-BOOT_DISK_CODE		db ?	; 1 = HDD, 2 = FDD
+HEX_word_EB4	dw ?
+HEX_word_EB6	dw ?
+HEX_word_EB8	dw ?
+HEX_word_EBA	dw ?
+CHAR_BUF	db ?
+SAVED_SS	dw ?
+SAVED_SP	dw ?
+SAVED_ES	dw ?	; Saved on syscall entry
+MEM_SIZE	dw ?
+unk_EC5		db ?
+WHATS_CB_SEG	db ?
+POST_RESULT	db ?
+BOOT_DISK_CODE	db ?	; 1 = HDD, 2 = FDD
 
 SAVED_CPU_REGS istruc CPU_REGS
 	at CPU_REGS.AX,		dw ?
@@ -3944,11 +3980,11 @@ DISK_IOPB istruc IOPB
 	at IOPB.DISK_DMA_SEGMENT,	dw ?
 	at IOPB.DISK_SECTOR_LEN,	dw ?
 iend
-		db    ? ;
-GETCHAR_ECHO_BUF dw ?
-PRINTHEX_unk_F1A db    ?
-		db    ? ;
-PRINTHEX_unk_F1C db    ?
+			db ?
+GETCHAR_ECHO_BUF	dw ?
+PRINTHEX_unk_F1A	db ?
+			db ?
+PRINTHEX_unk_F1C	db ?
 
 ;========================================================================
 section .iop follows=.data align=1
@@ -4025,13 +4061,13 @@ db 040h, 000h				; x1fc9:  sintr
 db 020h, 048h				;         hlt
 
 ;========================================================================
-section .tail start=1fdeh align=1
+section .tail start=ROMLEN-22 align=1
 		dw 1EC8h
-		dw 0FE00h
+		dw ROMSEG
 
 ;========================================================================
-section .entry vstart=0fff0h start=1ff0h
-ENTRY		jmp    0FE00h:POST
+section .entry vstart=0fff0h start=ROMLEN-16
+ENTRY		jmp    ROMSEG:POST
 
 		times 6-($-$$) db 0
 SCP		istruc I8089_SCP
@@ -4042,4 +4078,5 @@ SCP		istruc I8089_SCP
 		iend
 
 		times 0eh-($-$$) db 0
-CHECKSUM	dw 1BFFh		; Checksum???
+		db 0FFh
+CHECKSUM	db 0C4h
