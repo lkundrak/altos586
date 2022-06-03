@@ -469,10 +469,8 @@ trytx (x86emu_t *emu, unsigned ptr)
 	fprintf(stderr, "EMU: OUT: {len=%d, buf=0x%x}", len, txbuf);
 	for (i = 0; i < len; i++) {
 		c = x86emu_read_byte (emu, txbuf + i);
-		if (c != '\r') {
-			putchar(c);
-			emu->max_instr += 10000;
-		}
+		putchar(c);
+		emu->max_instr += 10000;
 		fprintf (stderr, "{%02x} ", c);
 	}
 	fprintf (stderr, "| ");
