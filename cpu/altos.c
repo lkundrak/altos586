@@ -134,6 +134,23 @@ iopattn(x86emu_t *emu)
 
 			// io status
 			//x86emu_write_byte(emu, pp + 0x05, 0x00);
+		} else {
+			int i;
+			unsigned char pc = 0;
+			unsigned char c;
+
+			printf ("UNKNOWN 8089 CB1.PB.TP AT 0x%04x (%04x:%04x):\n", tp1,
+				x86emu_read_word(emu, pb1 + 2),
+				x86emu_read_word(emu, pb1));
+			for (i = 0; i < 0x200; i++) {
+				c = x86emu_read_byte(emu, tp1+i);
+				printf("%02x ", c);
+				if (pc == 0x20 && c == 0x48) // hlt
+					break;
+				pc = c;
+			}
+			printf("\n");
+			x86emu_write_byte(emu, cb + 0 + 1, 0); // Mark channel not busy
 		}
 	}
 
