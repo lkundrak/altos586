@@ -394,6 +394,7 @@ static unsigned
 pcmd1(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 {
 	unsigned cmd = x86emu_read_byte(emu, ptr + 1);
+	unsigned stat = x86emu_read_byte(emu, ptr + 2);
 
 	/* Busy bit not on */
 	if (!printonly && (cmd & 0x80) == 0)
@@ -402,7 +403,7 @@ pcmd1(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	xprintf ("[%s] {0x%04x}\n", name, ptr);
 	xprintf ("   0 0x%04x   0x%02x Firmware Version Register\n",	ptr + 0, x86emu_read_byte(emu, ptr + 0));
 	xprintf ("   1 0x%04x   0x%02x System Command Register\n",	ptr + 1, cmd);
-	xprintf ("   2 0x%04x   0x%02x System Status Register\n",	ptr + 2, x86emu_read_byte(emu, ptr + 2));
+	xprintf ("   2 0x%04x   0x%02x System Status Register\n",	ptr + 2, stat);
 	xprintf ("   3 0x%04x 0x%04x Interrupt Vector Register\n",	ptr + 3, x86emu_read_word(emu, ptr + 3));
 	xprintf ("   5 0x%04x   0x%02x New Command Register\n",		ptr + 5, x86emu_read_byte(emu, ptr + 5));
 
@@ -412,10 +413,14 @@ pcmd1(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	switch (cmd & 0x7f) {
 	case 0:
 		printf ("(Command %d) DISABLE CONTROLLER\n", cmd & 0x0f);
+		stat &= ~1;
+		x86emu_write_byte(emu, ptr + 2, stat);
 		x86emu_stop (emu);
 		break;
 	case 1:
 		xprintf ("(Command %d) ENABLE CONTROLLER\n", cmd & 0x0f);
+		stat |= 1;
+		x86emu_write_byte(emu, ptr + 2, stat);
 		break;
 	case 2:
 		printf ("(Command %d) DISABLE INTERRUPTS\n", cmd & 0x0f);
@@ -426,7 +431,7 @@ pcmd1(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 		x86emu_stop (emu);
 		break;
 	case 4:
-		printf ("(Command %d) ENABLE INTERRUPTS\n", cmd & 0x0f);
+		printf ("(Command %d) RESET INTERRUPT\n", cmd & 0x0f);
 		x86emu_stop (emu);
 		break;
 	default:
