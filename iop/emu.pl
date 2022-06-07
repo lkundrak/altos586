@@ -1082,12 +1082,14 @@ sub hostmem { (
 0x04a2 => 'CH FDC - Command Block Pointer Low',
 0x04a3 => 'CH FDC - Command Block Pointer - 2',
 0x04a4 => 'CH FDC - Command Block Pointer - 3',
-0x04a5 => 'CH FDC - Command Block Pointer High',
-
-0x04a6 => 'CH FDC - Command Block Count',
-0x04a6 => 'CH FDC - Command Block Done',
+0x04a5 => 'CH FDC - Command Block Count',
+0x04a6 => 'CH FDC - Command Block Last',
+0x04a7 => 'CH FDC - Command Block Next',
+0x04a8 => 'CH FDC - UNUSED!',
+0x04a9 => 'CH FDC - UNUSED!',
 
 # 0x4aa - 0x4e9
+# Floppy Parameters
 (map { 0x04aa+$_ => sprintf ("CH FDC %D", $_) } 0..63),
 
 #EMU: [0x1fffc]  0x0416 Initialization Register
