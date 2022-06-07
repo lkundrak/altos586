@@ -163,6 +163,93 @@ FILE *out = NULL;
 	} while(0)
 //#define xprintf(...) printf(__VA_ARGS__)
 
+static void
+hddread(x86emu_t *emu, unsigned data,
+	unsigned head, unsigned track, unsigned sector, unsigned count)
+{
+	static const unsigned secs = 9;
+	int tb, lba, len;
+	unsigned char c;
+	int i;
+
+	xprintf ("HDD READ DMAADR=0x%05x HEAD=%d TRACK=%d START=%d COUNT=%d TO=0x%05x\n",
+		data, head, track, sector, count, data);
+
+	if (track != 0 || head != 0)
+		return;
+
+	tb = (track * 2 + head) * secs;
+	lba = ((tb + sector) << 9);
+	len = count * 512;
+
+	xprintf ("  LBA=%d LEN=%d\n", lba, len);
+
+	if (hddfd == -1) {
+		for (i = 0; i < sizeof(bootcode); i++)
+			x86emu_write_byte (emu, data + i, bootcode[i]);
+		return;
+	}
+
+	if (lseek(hddfd, lba, SEEK_SET) == -1) {
+		perror("SEEK_SET");
+		return;
+	}
+
+	for (i = 0; i < len; i++) {
+		switch (read(hddfd, &c, 1)) {
+		case 0: // EOF
+			fprintf(stderr, "HDD: Short read\n");
+			return;
+		case -1:
+			perror("read");
+			return;
+		default:
+			x86emu_write_byte (emu, data + i, c);
+		}
+	}
+}
+
+static void
+fddread(x86emu_t *emu, unsigned data, unsigned secsize,
+	unsigned head, unsigned track, unsigned start, unsigned end)
+{
+	static const unsigned secs = 9;
+	int tb, lba, len;
+	unsigned char c;
+	int i;
+
+	tb = (track * 2 + head) * secs;
+	lba = (tb + (start - 1))*secsize;
+	len = (tb + end)*secsize - lba;
+
+	xprintf ("FDD READ LBA=0x%05x LEN=%d | HEAD=%d TRACK=%d START=%d END=%d SEC=%d TO=0x%05x\n",
+		lba, len, head, track, start, end, secsize, data);
+
+	if (fddfd == -1) {
+		for (i = 0; i < sizeof(bootcode); i++)
+			x86emu_write_byte (emu, data + i, bootcode[i]);
+		return;
+	}
+
+	if (lseek(fddfd, lba, SEEK_SET) == -1) {
+		perror("SEEK_SET");
+		return;
+	}
+
+	for (i = 0; i < len; i++) {
+		switch (read(fddfd, &c, 1)) {
+		case 0: // EOF
+			fprintf(stderr, "FDD: Short read\n");
+			return;
+		case -1:
+			perror("read");
+			return;
+		default:
+			x86emu_write_byte (emu, data + i, c);
+		}
+	}
+}
+
 static int
 emueq(x86emu_t *emu, unsigned tp1, const unsigned char iopp[], int size)
 {
@@ -216,28 +303,49 @@ iopattn(x86emu_t *emu)
 			x86emu_read_word(emu, pb1));
 
 		if (emueq(emu, tp1, iop_fw, sizeof(iop_fw))) {
+			unsigned cmd, data, head, track, sector, count;
+
+			cmd = x86emu_read_byte(emu, pb1 + 0x04);
+
+			data = x86emu_read_word(emu, pb1 + 0x0e) << 4;
+			data |= x86emu_read_word(emu, pb1 + 0xc);
+
+			head = x86emu_read_byte(emu, pb1 + 0x08) & 0x0f;
+			track = x86emu_read_word(emu, pb1 + 0x06);
+			sector = x86emu_read_byte(emu, pb1 + 0x09);
+			count = x86emu_read_byte(emu, pb1 + 0x10);
+
 			xprintf("Disk I/O Parameter block:\n");
 			xprintf(" 0x%05x 0x00 0x%04x Offset\n", pb1 + 0x00, x86emu_read_word(emu, pb1 + 0x00));
 			xprintf(" 0x%05x 0x02 0x%04x Segment\n", pb1 + 0x02, x86emu_read_word(emu, pb1 + 0x02));
-			xprintf(" 0x%05x 0x04   0x%02x IN/OUT (Command?)\n", pb1 + 0x04, x86emu_read_byte(emu, pb1 + 0x04));
-			xprintf(" 0x%05x 0x05   0x%02x OUT  (Return status)\n", pb1 + 0x05, x86emu_read_byte(emu, pb1 + 0x05));
-			xprintf(" 0x%05x 0x06   0x%02x IN\n", pb1 + 0x06, x86emu_read_byte(emu, pb1 + 0x06));
-			xprintf(" 0x%05x 0x07   0x%02x IN\n", pb1 + 0x07, x86emu_read_byte(emu, pb1 + 0x07));
-			xprintf(" 0x%05x 0x08   0x%02x IN\n", pb1 + 0x08, x86emu_read_byte(emu, pb1 + 0x08));
-			xprintf(" 0x%05x 0x09   0x%02x IN/OUT\n", pb1 + 0x09, x86emu_read_byte(emu, pb1 + 0x09));
-			xprintf(" 0x%05x 0x0a 0x%04x IN  (Byte count)\n", pb1 + 0x0a, x86emu_read_word(emu, pb1 + 0x0a));
-			xprintf(" 0x%05x 0x0c 0x%04x IN\n", pb1 + 0x0c, x86emu_read_word(emu, pb1 + 0x0c));
-			xprintf(" 0x%05x 0x0e 0x%04x UNUSED\n", pb1 + 0x0e, x86emu_read_word(emu, pb1 + 0x0e));
-			xprintf(" 0x%05x 0x10 0x%04x IN/OUT (Some countdown)\n", pb1 + 0x10, x86emu_read_word(emu, pb1 + 0x10));
-			xprintf(" 0x%05x 0x12 0x%04x IN/OUT (Byte count?)\n", pb1 + 0x12, x86emu_read_word(emu, pb1 + 0x12));
-			xprintf(" 0x%05x 0x14   0x%02x IN/OUT\n", pb1 + 0x14, x86emu_read_byte(emu, pb1 + 0x14));
-			xprintf(" 0x%05x 0x15   0x%02x IN\n", pb1 + 0x15, x86emu_read_byte(emu, pb1 + 0x15));
+			xprintf(" 0x%05x 0x04   0x%02x Opcode\n", pb1 + 0x04, cmd);
+			xprintf(" 0x%05x 0x05   0x%02x Status\n", pb1 + 0x05, x86emu_read_byte(emu, pb1 + 0x05));
+			xprintf(" 0x%05x 0x06 0x%04x Cylinder\n", pb1 + 0x06, track);
+			xprintf(" 0x%05x 0x08   0x%02x Drive and head\n", pb1 + 0x08, x86emu_read_byte(emu, pb1 + 0x08));
+			xprintf(" 0x%05x 0x09   0x%02x Start sector\n", pb1 + 0x09, sector);
+			xprintf(" 0x%05x 0x0a 0x%04x Byte count\n", pb1 + 0x0a, x86emu_read_word(emu, pb1 + 0x0a));
+			xprintf(" 0x%05x 0x0c 0x%04x Buffer Offset\n", pb1 + 0x0c, x86emu_read_word(emu, pb1 + 0x0c));
+			xprintf(" 0x%05x 0x0e 0x%04x Buffer Segment\n", pb1 + 0x0e, x86emu_read_word(emu, pb1 + 0x0e));
+			xprintf(" 0x%05x 0x10   0x%02x Sector count\n", pb1 + 0x10, count);
+			xprintf(" 0x%05x 0x11   0x%02x Reserved\n", pb1 + 0x11, x86emu_read_byte(emu, pb1 + 0x11));
+			xprintf(" 0x%05x 0x12 0x%04x Reserved\n", pb1 + 0x12, x86emu_read_word(emu, pb1 + 0x12));
+			xprintf(" 0x%05x 0x14 0x%04x Reserved\n", pb1 + 0x14, x86emu_read_word(emu, pb1 + 0x14));
 			xprintf(" 0x%05x 0x16 0x%04x IN/OUT (Link Register)\n", pb1 + 0x16, x86emu_read_word(emu, pb1 + 0x16));
 
 			x86emu_write_byte(emu, cb + 0 + 1, 0); // Mark channel not busy
-
-			// io status
-			//x86emu_write_byte(emu, pb1 + 0x05, 0x00);
+			switch (cmd) {
+			case 0x00:
+				x86emu_write_byte(emu, pb1 + 0x05, 0x00); // io status
+				break;
+			case 0x21:
+				hddread(emu, data, head, track, sector, count);
+				x86emu_write_byte(emu, pb1 + 0x05, 0x00); // io status
+				x86emu_write_byte(emu, pb1 + 0x14, x86emu_read_word(emu, pb1 + 0x06));
+				break;
+			default:
+				printf("HD COMMAND %02x\n", cmd);
+				x86emu_stop (emu);
+			}
 		} else if (emueq(emu, tp1, iop_xenix, sizeof(iop_xenix))) {
 			printf("XENIX IOP IO\n");
 			x86emu_stop (emu);
@@ -299,54 +407,6 @@ iopattn(x86emu_t *emu)
 	//exit(0);
 }
 
-
-
-
-
-
-static void
-hddread(x86emu_t *emu, unsigned data,
-	unsigned head, unsigned track, unsigned sector, unsigned count)
-{
-	static const unsigned secs = 9;
-	int tb, lba, len;
-	unsigned char c;
-	int i;
-
-	if (track != 0 || head != 0)
-		return;
-
-	tb = (track * 2 + head) * secs;
-	lba = ((tb + sector) << 9);
-	len = count * 512;
-
-	xprintf ("  LBA=%d LEN=%d\n", lba, len);	
-
-	if (hddfd == -1) {
-		for (i = 0; i < sizeof(bootcode); i++)
-			x86emu_write_byte (emu, data + i, bootcode[i]);
-		return;
-	}
-
-	if (lseek(hddfd, lba, SEEK_SET) == -1) {
-		perror("SEEK_SET");
-		return;
-	}
-
-	for (i = 0; i < len; i++) {
-		switch (read(hddfd, &c, 1)) {
-		case 0: // EOF
-			fprintf(stderr, "HDD: Short read\n");
-			return;
-		case -1:
-			perror("read");
-			return;
-		default:
-			x86emu_write_byte (emu, data + i, c);
-		}
-	}
-}
-
 static void
 cpuint1_hdd(x86emu_t *emu)
 {
@@ -402,8 +462,6 @@ cpuint1_hdd(x86emu_t *emu)
 		break;
 	case 0x2c:
 		//x86emu_write_byte (emu, ptr + 13, 0xee); //Boot Failed, Status=EE*
-		xprintf ("HDD READ DMAADR=0x%05x HEAD=%d TRACK=%d START=%d COUNT=%d TO=0x%05x\n",
-			data, head, track, sector, count, data);
 		hddread(emu, data, head, track, sector, count);
 		x86emu_write_byte (emu, ptr + 13, 0x0); // sukces
 		break;
@@ -416,47 +474,6 @@ cpuint1_hdd(x86emu_t *emu)
 	//x86emu_stop (emu);
 }
 
-
-static void
-fddread(x86emu_t *emu, unsigned data, unsigned secsize,
-	unsigned head, unsigned track, unsigned start, unsigned end)
-{
-	static const unsigned secs = 9;
-	int tb, lba, len;
-	unsigned char c;
-	int i;
-
-	tb = (track * 2 + head) * secs;
-	lba = (tb + (start - 1))*secsize;
-	len = (tb + end)*secsize - lba;
-
-	xprintf ("FDD READ LBA=0x%05x LEN=%d | HEAD=%d TRACK=%d START=%d END=%d SEC=%d TO=0x%05x\n",
-		lba, len, head, track, start, end, secsize, data);
-
-	if (fddfd == -1) {
-		for (i = 0; i < sizeof(bootcode); i++)
-			x86emu_write_byte (emu, data + i, bootcode[i]);
-		return;
-	}
-
-	if (lseek(fddfd, lba, SEEK_SET) == -1) {
-		perror("SEEK_SET");
-		return;
-	}
-
-	for (i = 0; i < len; i++) {
-		switch (read(fddfd, &c, 1)) {
-		case 0: // EOF
-			fprintf(stderr, "FDD: Short read\n");
-			return;
-		case -1:
-			perror("read");
-			return;
-		default:
-			x86emu_write_byte (emu, data + i, c);
-		}
-	}
-}
 
 // FLOPPY
 static void
@@ -771,7 +788,7 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 		// read sector
 		return 0;
 	}
-	
+
 //qw/20 00 00/, # Cmd, Status, 0x00
 //qw/05 01 05/, # Track/Head/Sector
 //qw/00 25 00 00/, # Buffer
@@ -1034,7 +1051,7 @@ ckcmd(x86emu_t *emu)
 	//x86emu_stop (emu);
 }
 
-unsigned mmu[256] = { 0, }; 
+unsigned mmu[256] = { 0, };
 
 static void
 mmuflags(char flags[9], unsigned val)
@@ -1057,7 +1074,7 @@ z80attn(x86emu_t *emu)
 	x86emu_write_byte(emu, psysregs, 0x32);
 	ckcmd(emu);
 }
-	
+
 static unsigned
 memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 {
