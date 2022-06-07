@@ -12,6 +12,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <x86emu.h>
+#include <time.h>
 
 struct termios *orig_tio = NULL;
 x86emu_memio_handler_t orig_memio = NULL;
@@ -806,6 +807,59 @@ tryrx (void)
 }
 
 
+#define BCD(n) (((((n)%100)/10) << 4) | ((n)%10))
+static unsigned
+rtccmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
+{
+	unsigned cmd = x86emu_read_byte(emu, ptr + 0);
+	struct tm *ltm;
+	time_t ltime;
+
+	/* Busy bit not on */
+	if (!printonly && (cmd & 0x80) == 0)
+		goto out;
+
+	xprintf ("[%s] {0x%04x}\n", name, ptr);
+	xprintf ("    0 0x%04x 0x%02x Control Register\n",	ptr + 0, cmd);
+	xprintf ("    1 0x%04x 0x%02x %d Seconds Register\n",	ptr + 1, ptr + 1, x86emu_read_byte(emu, ptr + 1));
+	xprintf ("    2 0x%04x 0x%02x %d Minutes Register\n",	ptr + 2, ptr + 2, x86emu_read_byte(emu, ptr + 2));
+	xprintf ("    3 0x%04x 0x%02x %d Hours Register\n",	ptr + 3, ptr + 3, x86emu_read_byte(emu, ptr + 3));
+	xprintf ("    4 0x%04x 0x%02x %d Day Register\n",	ptr + 4, ptr + 4, x86emu_read_byte(emu, ptr + 4));
+	xprintf ("    5 0x%04x 0x%02x %d Date Register\n",	ptr + 5, ptr + 5, x86emu_read_byte(emu, ptr + 5));
+	xprintf ("    6 0x%04x 0x%02x %d Month Register\n",	ptr + 6, ptr + 6, x86emu_read_byte(emu, ptr + 6));
+	xprintf ("    7 0x%04x 0x%02x %d Year Register\n",	ptr + 7, ptr + 7, x86emu_read_byte(emu, ptr + 7));
+
+	switch (cmd & 0x7f) {
+	case 1:
+		xprintf ("(Command %d) UPDATE TIME (Get)\n", cmd & 0x0f);
+
+		time(&ltime);
+		ltm = localtime(&ltime);
+
+		x86emu_write_byte(emu, ptr + 1, BCD(ltm->tm_sec)); // Seconds
+		x86emu_write_byte(emu, ptr + 2, BCD(ltm->tm_min)); // Minutes
+		x86emu_write_byte(emu, ptr + 3, BCD(ltm->tm_hour)); // Hours
+		x86emu_write_byte(emu, ptr + 4, BCD(ltm->tm_wday + 1)); // Day
+		x86emu_write_byte(emu, ptr + 5, BCD(ltm->tm_mday)); // Date
+		x86emu_write_byte(emu, ptr + 6, BCD(ltm->tm_mon + 1)); // Month
+		x86emu_write_byte(emu, ptr + 7, BCD(ltm->tm_year)); // Year
+		break;
+	case 2:
+		xprintf ("(Command %d) SET TIME (Set)\n", cmd & 0x0f);
+		//stat |= 1;
+		//x86emu_write_byte(emu, ptr + 2, stat);
+		break;
+	default:
+		printf ("BAD COMMAND (%d)\n", cmd & 0x0f);
+		x86emu_stop (emu);
+	}
+
+	// ack the command
+	x86emu_write_byte(emu, ptr + 0, cmd & 0x7f);
+out:
+	return 8;
+}
+
 static void
 pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 {
@@ -819,6 +873,7 @@ pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 4");
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 5");
 	ptr += fdccmd(emu, ptr, printonly, "Floppy Channel");
+	ptr += rtccmd(emu, ptr, printonly, "RTC Channel");
 }
 
 static void
