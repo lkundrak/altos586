@@ -1054,8 +1054,8 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			// "Reserved for system bus I/O."
 			// ccpm
 			xprintf ("WRITE8 0x%04x <- 0x%02x (8089 interrupt?)\n", addr, *val);
-			iopattn(emu);
 			return 0;
+
 
 		case 0x0101: // <- 0x70
 			// "PIT - Control Word Register - Write Only"
