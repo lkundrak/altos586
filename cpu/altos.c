@@ -741,7 +741,7 @@ fdccmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 			x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
 			x86emu_write_byte(emu, ptr + 7, end); // commands done
 		}
-	} else if (cmd == 0x8f) {
+	} else if (cmd == 0x8f || cmd == 0x83) {
 		// what is this
 		if (start == end) {
 			x86emu_write_byte(emu, ptr + 0, 0x00); // zero out command
