@@ -933,7 +933,7 @@ static void
 z80attn(x86emu_t *emu)
 {
 	psysregs = x86emu_read_word(emu, 0x1fffc);
-	psysregs |= x86emu_read_word(emu, 0x1fffe) << 16;
+	psysregs |= x86emu_read_byte(emu, 0x1fffe) << 16;
 	x86emu_write_byte(emu, psysregs, 0x32);
 	ckcmd(emu);
 }
