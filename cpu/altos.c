@@ -1044,10 +1044,18 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			// PIC - ICW1, OCW2, or OCW3
 			xprintf ("WRITE8 0x%04x <- 0x%02x PIC - ICW1, OCW2, or OCW3\n", addr, *val);
 			return 0;
+
+
 		case 0xff00: // <- 0x03
 			// "Reserved for system bus I/O."
 			xprintf ("WRITE8 0x%04x <- 0x%02x (8089 interrupt?)\n", addr, *val);
 			iopattn(emu);
+			return 0;
+
+		case 0xff04: // <- 0x00
+			// UNKNOWN XENIX
+			xprintf ("BAD WRITE8 0x%04x <- 0x%02x (XENIX)\n", addr, *val);
+			//iopattn(emu);
 			return 0;
 
 		case 0xff80: // <- 0x00
@@ -1091,6 +1099,15 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 
 	case X86EMU_MEMIO_16 | X86EMU_MEMIO_O:
 		switch (addr) {
+		case 0x0040: // 0x00
+			// UNKNOWN_PORT_40 xenix
+			xprintf ("WRITE16 0x%04x <- 0x%02x XENIX UNKNOWN PORT\n", addr, *val);
+			return 0;
+		case 0x0070: // 0x00
+			// MMU - Clear Violation Port ?
+			xprintf ("WRITE16 0x%04x <- 0x%02x XENIX UNKNOWN PORT\n", addr, *val);
+			return 0;
+
 		case 0x0050:
 			// Z80 on main board
 			// Z80A I/O Processor Chan att.
