@@ -884,9 +884,8 @@ loc_FE4B3:
 I8089_DO_IO:
 		push	es
 		lea	si, [IOP_BLOCK]
-		mov	word [si], 6CAh
-		add	word [si], 17F0h
-		mov	word [si+2], ROMSEG
+		mov	word [si+I8089_PB.IOP_OFFSET], IOPB_BLOCK
+		mov	word [si+I8089_PB.IOP_SEGMENT], ROMSEG
 		mov	ax, [SCB+I8089_SCB.CB_SEG]
 		mov	es, ax
 		mov	al, 3
