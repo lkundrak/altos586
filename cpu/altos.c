@@ -644,7 +644,7 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 }
 
 static unsigned
-ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
+fdccmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 {
 	static unsigned char fdparms[64] = { 0, };
 	unsigned cmd = x86emu_read_byte(emu, ptr + 0);
@@ -757,7 +757,7 @@ ucmd(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
 	xprintf ("\n");
 //	x86emu_stop (emu);
 out:
-	return 22;
+	return 10+64;
 }
 
 static unsigned ch1_ptr = 0;
@@ -818,7 +818,7 @@ pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 3");
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 4");
 	ptr += pchcmd(emu, ptr, printonly, "Communication Channel Registers 5");
-	ptr += ucmd(emu, ptr, printonly, "Floppy Channel");
+	ptr += fdccmd(emu, ptr, printonly, "Floppy Channel");
 }
 
 static void
