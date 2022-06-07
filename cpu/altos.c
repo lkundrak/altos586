@@ -389,7 +389,7 @@ cpuint2_floppy(x86emu_t *emu)
 	x86emu_intr_raise(emu, 32 + 7, INTR_TYPE_SOFT, 0);
 }
 
-unsigned pnewcmd = 0;
+unsigned psysregs = 0;
 
 static unsigned
 pcmd1(x86emu_t *emu, unsigned ptr, int printonly, const char *name)
@@ -879,45 +879,22 @@ pcmd(x86emu_t *emu, unsigned ptr, int printonly)
 static void
 ckcmd(x86emu_t *emu)
 {
+	unsigned oldsysregs = 0;
 	static unsigned oldcmd = 0;
 	unsigned newcmd;
-	unsigned ptr;
 
-	ptr = x86emu_read_word(emu, 0x1fffc);
-	ptr |= x86emu_read_word(emu, 0x1fffe) << 16;
+	newcmd = x86emu_read_byte(emu, psysregs + 5);
 
-	if (ptr)
-		x86emu_write_byte(emu, ptr, 0x32);
-
-	pnewcmd = ptr + 5;
-	newcmd = x86emu_read_byte(emu, pnewcmd);
-
-	if (newcmd == oldcmd)
+	if (oldsysregs == psysregs && newcmd == oldcmd)
 		return;
 
-	xprintf("=== COMMAND %d -> %d {0x%05x} === {ptr=0x%02x} ===\n", oldcmd, newcmd, pnewcmd, ptr);
+	oldsysregs = psysregs;
 	oldcmd = newcmd;
 
-	pcmd(emu, ptr, 0);
+	xprintf("=== COMMAND %d -> %d {0x%05x} === {psysregs=0x%02x} ===\n", oldcmd, newcmd, psysregs + 5, psysregs);
+	//pcmd(emu, psysregs, 1);
 
-#if 0
-	xprintf ("   0 0x%04x 0x%02x read, write, format command\n", ptr + 0, x86emu_read_byte(emu, ptr + 0));
-	xprintf ("   1 0x%04x 0x%02x status\n", ptr + 1, x86emu_read_byte(emu, ptr + 1));
-	xprintf ("   2 0x%04x 0x%02x cylinder-low\n", ptr + 2, x86emu_read_byte(emu, ptr + 2));
-	xprintf ("   3 0x%04x 0x%02x cylinder-high\n", ptr + 3, x86emu_read_byte(emu, ptr + 3));
-	xprintf ("   4 0x%04x 0x%02x head and drive\n", ptr + 4, x86emu_read_byte(emu, ptr + 4));
-	xprintf ("   5 0x%04x 0x%02x starting sector no.\n", ptr + 5, x86emu_read_byte(emu, ptr + 5));
-	xprintf ("   6 0x%04x 0x%02x byte count-low\n", ptr + 6, x86emu_read_byte(emu, ptr + 6));
-	xprintf ("   7 0x%04x 0x%02x byte count-high\n", ptr + 7, x86emu_read_byte(emu, ptr + 7));
-	xprintf ("   8 0x%04x 0x%02x system memory address-offset low\n", ptr + 8, x86emu_read_byte(emu, ptr + 8));
-	xprintf ("   9 0x%04x 0x%02x system memory address-offset high\n", ptr + 9, x86emu_read_byte(emu, ptr + 9));
-	xprintf ("  10 0x%04x 0x%02x system memory address-segment low\n", ptr + 10, x86emu_read_byte(emu, ptr + 10));
-	xprintf ("  11 0x%04x 0x%02x system memory address-segment high\n", ptr + 11, x86emu_read_byte(emu, ptr + 11));
-	xprintf ("  12 0x%04x 0x%02x reserved\n", ptr + 12, x86emu_read_byte(emu, ptr + 12));
-	xprintf ("  13 0x%04x 0x%02x number of sectors processed before error\n", ptr + 13, x86emu_read_byte(emu, ptr + 13));
-	xprintf ("  14 0x%04x 0x%02x reserved\n", ptr + 14, x86emu_read_byte(emu, ptr + 14));
-	xprintf ("  15 0x%04x 0x%02x job done\n", ptr + 15, x86emu_read_byte(emu, ptr + 15));
-#endif
+	pcmd(emu, psysregs, 0);
 
 	//x86emu_stop (emu);
 }
@@ -935,6 +912,15 @@ mmuflags(char flags[9], unsigned val)
 	flags[5] = val & 0x2000 ? 'B' : 'b';
 	flags[6] = val & 0x4000 ? 'A' : 'a';
 	flags[7] = val & 0x8000 ? 'W' : 'w';
+}
+
+static void
+z80attn(x86emu_t *emu)
+{
+	psysregs = x86emu_read_word(emu, 0x1fffc);
+	psysregs |= x86emu_read_word(emu, 0x1fffe) << 16;
+	x86emu_write_byte(emu, psysregs, 0x32);
+	ckcmd(emu);
 }
 	
 static unsigned
@@ -1022,8 +1008,8 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 
 		case 0x0050:
 			// Z80A I/O Processor Chan att.
-			xprintf ("WRITE8 0x%04x <- 0x%02x Z80A I/O Processor Chan att.\n", addr, *val);
-			ckcmd(emu);
+			xprintf ("WRITE8 0x%04x <- 0x%02x Z80A I/O Processor Chan att.", addr, *val);
+			z80attn(emu);
 			return 0;
 
 		case 0x0058: /* <- 0x00 */
@@ -1094,7 +1080,7 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			// Z80 on main board
 			// Z80A I/O Processor Chan att.
 			xprintf ("WRITE16 0x%04x <- 0x%02x (serial interrupt Z80 on CPU board) Z80A I/O Processor Chan att.\n", addr, *val);
-			ckcmd(emu);
+			z80attn(emu);
 			return 0;
 		case 0x0058: /* <- 0x100 */
 			// Control Bits Port - Write Only.
@@ -1189,7 +1175,7 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 #endif
 
 
-	if (type == (X86EMU_MEMIO_W | X86EMU_MEMIO_8) && pnewcmd && addr == pnewcmd) {
+	if (type == (X86EMU_MEMIO_W | X86EMU_MEMIO_8) && psysregs && addr == psysregs + 5) {
 		xprintf ("WRITE8 MEM 0x%04x <- 0x%02x New Command\n", addr, *val);
 		ckcmd(emu);
 		//x86emu_stop (emu);
