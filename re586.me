@@ -151,6 +151,79 @@ _
 .TE
 
 .bp
+.sh 1 "Floppy Interface"
+
+.sh 2 "Geometry and Format"
+
+The Altos 586 computer uses 5\[14]" diskettes in a drive with following
+parameters:
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|l.
+Data density | Double Density
+Encoding     | MFM
+Speed        | 300 RPM
+Bit rate     | 250 kbps
+Tracks       | 80
+Heads/Sides  | 2
+.TE
+
+The floppies XENIX, CP/M and the firmware use the following format (though the
+controller permits other formats).
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|l.
+Sector size       | 512 bytes
+Sectors per track | 9
+.TE
+
+Note that while this format is fairly unusual for 5\[14]" drives and media,
+it's exactly the same as IBM PC 3\[12]" DD (720 KB) disks use. Regular
+3\[12]" drives can be used if they're adapted for the Altos 586 floppy
+connector pinout (see below).
+
+The regular 1.44 MB floppies can usually be used with DD format, but
+the density select window needs to be covered with a piece of opaque tape.
+
+.sh 2 "Floppy Connector Pinout"
+
+The floppy connector is not PC compatible and therefore usual PC floppy drives can't be
+used without modifications. It uses straight ribbon cables, not the PC-style ones with a twist.
+
+The pinout (and drive geometry) is fairly close to to what Commodore Amiga computers use.
+There seems to be a plenty of tutorials on modifying PC drives for Amiga on the Web.
+The same modificaqtions should work for the Altos 586.
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|cb|s|lb|lb|lbx
+c|l|l|l|l|l
+^|l|l|l|l|l.
+Function | Pin       | Direction | Function          | Note
+_
+GND      |   1 |   2 | Output    | Motor Enable     |
+         |   3 |   4 |           |                  |
+         |   5 |   6 |           |                  |
+         |   7 |   8 | Input     | Sector Index     |
+         |   9 |  10 | Output    | Disk Select 0    |
+         |  11 |  12 | Output    | Disk Select 1    |
+         |  13 |  14 |           |                  |
+         |  15 |  16 | Output    | Motor Enable     | Jumpered with E32
+         |  17 |  18 | Output    | Step Direction   |
+         |  19 |  20 | Output    | Step Pulse       |
+         |  21 |  22 | Output    | Write Data       |
+         |  23 |  24 | Output    | Write Gate       |
+         |  25 |  26 | Input     | Track 0          |
+         |  27 |  28 | Input     | Write Protect    |
+         |  29 |  30 | Input     | Read Data        |
+         |  31 |  32 | Output    | Side/Head Select | Jumpered by E1, closed for double-sided drive
+         |  33 |  34 | Input     | Drive Ready      |
+.TE
+
+
+.bp
 .sh 1 "Firmware Interface"
 
 The firmware interface is unsurprisingly very similar to 586T. A notable
