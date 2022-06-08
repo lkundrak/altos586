@@ -787,6 +787,16 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
 		// read sector
 		return 0;
+	default:
+		printf ("        BAD FLOPPY COMMAND: 0x%02x\n", cmd);
+#if 0
+		for (int i = 0; i < 0x100000; i++) {
+			if (i % 32 == 0)
+				printf("\n");
+			printf ("%02x ", x86emu_read_byte(emu, ptr2 + 1));
+		}
+		x86emu_stop (emu);
+#endif
 	}
 
 //qw/20 00 00/, # Cmd, Status, 0x00
