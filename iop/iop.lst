@@ -1100,7 +1100,7 @@ ROM:0338 ; Attributes: bp-based	frame
 ROM:0338 
 ROM:0338 PIO_A_NEG_LOW_4_BITS:			 ; CODE	XREF: FDC_NEVIEM_sub_03B6+6p
 ROM:0338					 ; SIO_L1H_sub_0D4C+45p
-ROM:0338		 in	 a, (34h)
+ROM:0338		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:033A		 cpl			 ; complement ~
 ROM:033B		 and	 0Fh
 ROM:033D		 ret	 
@@ -1113,7 +1113,7 @@ ROM:033E ; a=result
 ROM:033E ; Attributes: bp-based	frame
 ROM:033E 
 ROM:033E PIO_A_GET_BIT6:			 ; CODE	XREF: DO_PIO_A_GET_BIT6p
-ROM:033E		 in	 a, (34h)
+ROM:033E		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:0340		 and	 40h ; '@'
 ROM:0342		 ret	 
 ROM:0342 ; End of function PIO_A_GET_BIT6
@@ -1127,7 +1127,7 @@ ROM:0343
 ROM:0343 PIO_A_GET_BIT7_FDC_INTRQ:		 ; CODE	XREF: FDC_READ_TRACK+8p
 ROM:0343					 ; FDC_WRITE_TRACK+8p
 ROM:0343					 ; FDC_RUN_CMD+5p
-ROM:0343		 in	 a, (34h)
+ROM:0343		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:0345		 and	 80h ; 'Ç'
 ROM:0347		 ret	 
 ROM:0347 ; End of function PIO_A_GET_BIT7_FDC_INTRQ
@@ -1139,7 +1139,7 @@ ROM:0348 ; Goes	to an unpopulated pin (via a driver) a=result
 ROM:0348 ; Attributes: bp-based	frame
 ROM:0348 
 ROM:0348 orphan_PIO_B_GET_BIT2_AUX_FDC:
-ROM:0348		 in	 a, (36h)
+ROM:0348		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:034A		 and	 4
 ROM:034C		 ret	 
 ROM:034C ; End of function orphan_PIO_B_GET_BIT2_AUX_FDC
@@ -1151,7 +1151,7 @@ ROM:034D ; a=result
 ROM:034D ; Attributes: bp-based	frame
 ROM:034D 
 ROM:034D orphan_PIO_B_GET_BIT7_PIT_OUT2:
-ROM:034D		 in	 a, (36h)
+ROM:034D		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:034F		 and	 80h ; 'Ç'
 ROM:0351		 ret	 
 ROM:0351 ; End of function orphan_PIO_B_GET_BIT7_PIT_OUT2
@@ -1162,9 +1162,9 @@ ROM:0352
 ROM:0352 ; Attributes: bp-based	frame
 ROM:0352 
 ROM:0352 PIO_A_BIT5_ON:				 ; CODE	XREF: DO_CHECK_STUFF+42j
-ROM:0352		 in	 a, (34h)
+ROM:0352		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:0354		 or	 20h ; ' '
-ROM:0356		 out	 (34h),	a
+ROM:0356		 out	 (PIO_DATA_A), a ; PIO - Data port A
 ROM:0358		 ret	 
 ROM:0358 ; End of function PIO_A_BIT5_ON
 ROM:0358 
@@ -1175,9 +1175,9 @@ ROM:0359 ; Attributes: bp-based	frame
 ROM:0359 
 ROM:0359 PIO_A_BIT5_OFF:			 ; CODE	XREF: DO_NMI_HANDLER+49p
 ROM:0359					 ; DO_CHECK_STUFF+15p
-ROM:0359		 in	 a, (34h)
+ROM:0359		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:035B		 and	 0DFh ;	'▀'
-ROM:035D		 out	 (34h),	a
+ROM:035D		 out	 (PIO_DATA_A), a ; PIO - Data port A
 ROM:035F		 ret	 
 ROM:035F ; End of function PIO_A_BIT5_OFF
 ROM:035F 
@@ -1234,10 +1234,10 @@ ROM:0396		 ccf
 ROM:0397		 jr	 c, ZERO_TO_SOME_VAR_sub_03AC
 ROM:0399		 ld	 c, 0
 ROM:039B		 call	 SHIFT_OR_WHAT	 ; c=by	how much
-ROM:039E		 in	 a, (36h)
+ROM:039E		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:03A0		 and	 0FCh ;	'³'      ; BIT1 off
 ROM:03A2		 or	 l		 ; BIT0	on
-ROM:03A3		 out	 (36h),	a
+ROM:03A3		 out	 (PIO_DATA_B), a ; PIO - Data port B
 ROM:03A5		 ret	 
 ROM:03A5 ; End of function FDC_sub_0360
 ROM:03A5 
@@ -1310,11 +1310,11 @@ ROM:03C4		 ld	 (FDC_DRIVE_OR_WHAT), a
 ROM:03C7		 ld	 l, b
 ROM:03C8		 ld	 c, 3
 ROM:03CA		 call	 SHIFT_OR_WHAT	 ; c=by	how much
-ROM:03CD		 in	 a, (36h)
+ROM:03CD		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:03CF		 and	 0E7h ;	'þ'      ; BIT3 BIT4 off DS0/DS1
 ROM:03D1		 or	 l		 ; BIT0	on
 ROM:03D2		 xor	 18h
-ROM:03D4		 out	 (36h),	a
+ROM:03D4		 out	 (PIO_DATA_B), a ; PIO - Data port B
 ROM:03D6		 ret	 
 ROM:03D6 ; End of function FDC_SET_DRIVE_SELECT
 ROM:03D6 
@@ -1332,10 +1332,10 @@ ROM:03DA		 ret	 c
 ROM:03DB		 ld	 l, a
 ROM:03DC		 ld	 c, 5
 ROM:03DE		 call	 SHIFT_OR_WHAT	 ; c=by	how much
-ROM:03E1		 in	 a, (36h)
+ROM:03E1		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:03E3		 and	 0DFh ;	'▀'      ; BIT5 off (SIDE 0)
 ROM:03E5		 or	 l		 ; BIT0	in
-ROM:03E6		 out	 (36h),	a
+ROM:03E6		 out	 (PIO_DATA_B), a ; PIO - Data port B
 ROM:03E8		 ret	 
 ROM:03E8 ; End of function FDC_SET_SIDE
 ROM:03E8 
@@ -1352,10 +1352,10 @@ ROM:03EC		 ret	 c
 ROM:03ED		 ld	 l, a
 ROM:03EE		 ld	 c, 6
 ROM:03F0		 call	 SHIFT_OR_WHAT	 ; c=by	how much
-ROM:03F3		 in	 a, (36h)
+ROM:03F3		 in	 a, (PIO_DATA_B) ; PIO - Data port B
 ROM:03F5		 and	 0BFh ;	'┐'      ; what
 ROM:03F7		 or	 l		 ; what
-ROM:03F8		 out	 (40h),	a
+ROM:03F8		 out	 (DMA_CLEAR), a	 ; DMA - Clear carrier sense and parity	error bit
 ROM:03FA		 ret	 
 ROM:03FA ; End of function FDC_DMA_WHAT
 ROM:03FA 
@@ -2041,11 +2041,11 @@ ROM:05F7 ; Attributes: bp-based	frame
 ROM:05F7 
 ROM:05F7 INIT_PIT1:				 ; CODE	XREF: DO_NMI_HANDLER+97p
 ROM:05F7		 ld	 a, 0B4h ; '┤'
-ROM:05F9		 out	 (27h),	a
+ROM:05F9		 out	 (PIT1_CONTROL), a ; PIT 1 - Control byte for PIT 1
 ROM:05FB		 ld	 a, 0A8h ; '¿'
-ROM:05FD		 out	 (26h),	a
+ROM:05FD		 out	 (PIT1_COUNTER_2), a ; PIT 1 - Counter 2 timer interrupt
 ROM:05FF		 ld	 a, 61h	; 'a'
-ROM:0601		 out	 (25h),	a
+ROM:0601		 out	 (PIT1_COUNTER_1), a ; PIT 1 - Counter 1 provides baud rate for	port 5
 ROM:0603		 ret	 
 ROM:0603 ; End of function INIT_PIT1
 ROM:0603 
@@ -2284,10 +2284,10 @@ ROM:0750		 ld	 de, sub_0_582
 ROM:0753 
 ROM:0753 loc_0_753:				 ; CODE	XREF: SIO0_sub_070B+5Dj
 ROM:0753		 di	 
-ROM:0754		 in	 a, (40h)
+ROM:0754		 in	 a, (DMA_CLEAR)	 ; DMA - Clear carrier sense and parity	error bit
 ROM:0756		 nop	 
 ROM:0757		 nop	 
-ROM:0758		 in	 a, (34h)
+ROM:0758		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:075A		 and	 10h
 ROM:075C		 jr	 z, loc_0_771
 ROM:075E		 ei	 
@@ -2318,7 +2318,7 @@ ROM:078F		 pop	 de
 ROM:0790		 ld	 b, e
 ROM:0791		 call	 DELAY_A_BIT	 ; b=by	how much
 ROM:0794		 ld	 a, 87h	; 'ç'
-ROM:0796		 out	 (3Ch),	a
+ROM:0796		 out	 (DMA_ALL), a	 ; DMA - All read and write registers
 ROM:0798		 nop	 
 ROM:0799		 nop	 
 ROM:079A		 nop	 
@@ -2330,7 +2330,7 @@ ROM:07A4		 ei
 ROM:07A5		 ld	 bc, 7D0h
 ROM:07A8 
 ROM:07A8 loc_0_7A8:				 ; CODE	XREF: SIO0_sub_070B+A6j
-ROM:07A8		 in	 a, (29h)
+ROM:07A8		 in	 a, (SIO0_CHAN_A_CONTROL) ; SIO	0 - Channel A control for serial port 3
 ROM:07AA		 bit	 6, a
 ROM:07AC		 jr	 nz, loc_0_7BC
 ROM:07AE		 dec	 bc
@@ -2344,8 +2344,8 @@ ROM:07BC ; ───────────────────────
 ROM:07BC 
 ROM:07BC loc_0_7BC:				 ; CODE	XREF: SIO0_sub_070B+A1j
 ROM:07BC		 ld	 a, 0BFh ; '┐'
-ROM:07BE		 out	 (3Ch),	a
-ROM:07C0		 in	 a, (3Ch)
+ROM:07BE		 out	 (DMA_ALL), a	 ; DMA - All read and write registers
+ROM:07C0		 in	 a, (DMA_ALL)	 ; DMA - All read and write registers
 ROM:07C2		 bit	 5, a
 ROM:07C4		 jr	 z, loc_0_7CA
 ROM:07C6		 set	 1, (iy+IY_STRUCT.field_2A)
@@ -2421,10 +2421,10 @@ ROM:0816
 ROM:0816 loc_0_816:				 ; CODE	XREF: SIO_sub_0807+Aj
 ROM:0816		 ld	 de, sub_0_582
 ROM:0819		 di	 
-ROM:081A		 in	 a, (40h)
+ROM:081A		 in	 a, (DMA_CLEAR)	 ; DMA - Clear carrier sense and parity	error bit
 ROM:081C		 nop	 
 ROM:081D		 nop	 
-ROM:081E		 in	 a, (34h)
+ROM:081E		 in	 a, (PIO_DATA_A) ; PIO - Data port A
 ROM:0820		 and	 10h
 ROM:0822		 jr	 nz, loc_0_85B
 ROM:0824		 call	 SIO_sub_03A6
@@ -2480,8 +2480,8 @@ ROM:0871		 ld	 b, 2
 ROM:0873 
 ROM:0873 loc_0_873:				 ; CODE	XREF: XINTH_sub_086B+1Fj
 ROM:0873		 ld	 a, 1
-ROM:0875		 out	 (29h),	a
-ROM:0877		 in	 a, (29h)
+ROM:0875		 out	 (SIO0_CHAN_A_CONTROL),	a ; SIO	0 - Channel A control for serial port 3
+ROM:0877		 in	 a, (SIO0_CHAN_A_CONTROL) ; SIO	0 - Channel A control for serial port 3
 ROM:0879		 bit	 5, a
 ROM:087B		 jr	 nz, INTH_sub_08A9
 ROM:087D		 bit	 7, a
@@ -2503,7 +2503,7 @@ ROM:0898		 reti
 ROM:089A ; ───────────────────────────────────────────────────────────────────────────
 ROM:089A 
 ROM:089A loc_0_89A:				 ; CODE	XREF: XINTH_sub_086B+26j
-ROM:089A		 in	 a, (28h)
+ROM:089A		 in	 a, (SIO0_CHAN_A_DATA) ; SIO 0 - Channel A data	for serial port	3
 ROM:089C		 ld	 (iy+IY_STRUCT.field_29), a
 ROM:089F		 set	 5, (iy+IY_STRUCT.field_2A)
 ROM:08A3		 call	 SIO0_CHANA_CTL_STH
@@ -2527,7 +2527,7 @@ ROM:08B4		 call	 sub_0_9CB
 ROM:08B7		 ld	 b, 2
 ROM:08B9		 inir	 
 ROM:08BB		 call	 DMA_ALL_STH
-ROM:08BE		 in	 a, (28h)
+ROM:08BE		 in	 a, (SIO0_CHAN_A_DATA) ; SIO 0 - Channel A data	for serial port	3
 ROM:08C0		 pop	 af
 ROM:08C1		 and	 60h ; '`'
 ROM:08C3		 or	 1
@@ -2589,7 +2589,7 @@ ROM:0908		 otir
 ROM:090A		 res	 0, (iy+IY_STRUCT.field_2A)
 ROM:090E		 call	 SIO0_sub_0918
 ROM:0911		 ld	 a, 87h	; 'ç'
-ROM:0913		 out	 (3Ch),	a
+ROM:0913		 out	 (DMA_ALL), a	 ; DMA - All read and write registers
 ROM:0915		 jp	 TAIL_EI
 ROM:0915 ; End of function sub_0_8FA
 ROM:0915 
@@ -2832,7 +2832,7 @@ ROM:0A16					 ; SIO0_sub_07E6+16p
 ROM:0A16					 ; XINTH_sub_086B+38p
 ROM:0A16					 ; INTH_sub_08A9+20p
 ROM:0A16		 ld	 a, 18h
-ROM:0A18		 out	 (29h),	a
+ROM:0A18		 out	 (SIO0_CHAN_A_CONTROL),	a ; SIO	0 - Channel A control for serial port 3
 ROM:0A1A		 ret	 
 ROM:0A1A ; End of function SIO0_CHANA_CTL_STH
 ROM:0A1A 
@@ -2845,7 +2845,7 @@ ROM:0A1B DMA_ALL_STH:				 ; CODE	XREF: SIO0_sub_06F3p
 ROM:0A1B					 ; SIO0_sub_070B+ACp
 ROM:0A1B					 ; INTH_sub_08A9+12p
 ROM:0A1B		 ld	 a, 0C3h ; '├'
-ROM:0A1D		 out	 (3Ch),	a
+ROM:0A1D		 out	 (DMA_ALL), a	 ; DMA - All read and write registers
 ROM:0A1F		 ret	 
 ROM:0A1F ; End of function DMA_ALL_STH
 ROM:0A1F 
@@ -5044,8 +5044,8 @@ ROM:1560		 ei
 ROM:1561		 xor	 a
 ROM:1562		 ld	 (FDC_byte_268B), a
 ROM:1565		 call	 FDC_SELECT_DRIVE
-ROM:1568		 in	 a, (39h)
-ROM:156A		 out	 (3Bh),	a
+ROM:1568		 in	 a, (FDC_TRACK)	 ; FDC - Track number
+ROM:156A		 out	 (FDC_DATA), a	 ; FDC - Read/Write data
 ROM:156C		 ld	 a, 10h		 ; Seek
 ROM:156E		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:156E					 ; Called on init
@@ -5077,8 +5077,8 @@ ROM:1597		 jr	 nz, loc_0_158A
 ROM:1599		 xor	 a
 ROM:159A		 ld	 (FDC_byte_268B), a
 ROM:159D		 call	 FDC_SELECT_DRIVE
-ROM:15A0		 in	 a, (39h)
-ROM:15A2		 out	 (3Bh),	a
+ROM:15A0		 in	 a, (FDC_TRACK)	 ; FDC - Track number
+ROM:15A2		 out	 (FDC_DATA), a	 ; FDC - Read/Write data
 ROM:15A4		 ld	 a, 10h		 ; Seek
 ROM:15A6		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:15A6					 ; Called on init
@@ -5447,8 +5447,8 @@ ROM:179B		 inc	 a
 ROM:179C		 cp	 (hl)
 ROM:179D		 jr	 z, loc_0_17C6
 ROM:179F		 ld	 (hl), a
-ROM:17A0		 in	 a, (39h)
-ROM:17A2		 out	 (3Bh),	a
+ROM:17A0		 in	 a, (FDC_TRACK)	 ; FDC - Track number
+ROM:17A2		 out	 (FDC_DATA), a	 ; FDC - Read/Write data
 ROM:17A4		 ld	 a, 18h		 ; Seek	with head load
 ROM:17A6		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:17A6					 ; Called on init
@@ -5479,8 +5479,8 @@ ROM:17D6		 ld	 a, (byte_0_2690)
 ROM:17D9		 call	 FDC_SET_SIDE
 ROM:17DC		 ld	 a, 80h	; 'Ç'
 ROM:17DE		 ret	 c
-ROM:17DF		 in	 a, (39h)
-ROM:17E1		 out	 (3Bh),	a
+ROM:17DF		 in	 a, (FDC_TRACK)	 ; FDC - Track number
+ROM:17E1		 out	 (FDC_DATA), a	 ; FDC - Read/Write data
 ROM:17E3		 ld	 a, 18h		 ; Seek	with head load
 ROM:17E5		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:17E5					 ; Called on init
@@ -5526,17 +5526,17 @@ ROM:1816		 ld	 hl, unk_0_267E
 ROM:1819		 call	 ADD_WORD16	 ; hl+=a
 ROM:181C		 ld	 a, (hl)
 ROM:181D		 call	 FDC_ADJUST_TRACK_NUM
-ROM:1820		 out	 (39h),	a
+ROM:1820		 out	 (FDC_TRACK), a	 ; FDC - Track number
 ROM:1822		 ld	 a, (byte_0_268F)
 ROM:1825		 ld	 (hl), a
 ROM:1826		 push	 af
 ROM:1827		 call	 FDC_ADJUST_TRACK_NUM
-ROM:182A		 out	 (3Bh),	a
+ROM:182A		 out	 (FDC_DATA), a	 ; FDC - Read/Write data
 ROM:182C		 ld	 a, 18h		 ; Seek	with head load
 ROM:182E		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:182E					 ; Called on init
 ROM:1831		 pop	 af
-ROM:1832		 out	 (39h),	a
+ROM:1832		 out	 (FDC_TRACK), a	 ; FDC - Track number
 ROM:1834		 xor	 a
 ROM:1835		 ret	 
 ROM:1835 ; End of function FDC_SEEK_AND_LOAD_HEAD
@@ -5571,7 +5571,7 @@ ROM:184B		 call	 FDC_DMA_WHAT
 ROM:184E		 ld	 a, (byte_0_2690)
 ROM:1851		 call	 FDC_SET_SIDE
 ROM:1854		 ld	 a, (byte_0_2691)
-ROM:1857		 out	 (3Ah),	a
+ROM:1857		 out	 (FDC_SECTOR), a ; FDC - Sector	number
 ROM:1859		 ld	 a, 88h	; 'ê'    ; Read sector, sector size = 512
 ROM:185B		 call	 FDC_RUN_CMD_WITH_BITS ; Write command read status (a=i/o value)
 ROM:185E		 and	 10011100b	 ; 1001	1100 --	error bits
@@ -5596,7 +5596,7 @@ ROM:1872		 call	 FDC_DMA_WHAT
 ROM:1875		 ld	 a, (byte_0_2690)
 ROM:1878		 call	 FDC_SET_SIDE
 ROM:187B		 ld	 a, (byte_0_2691)
-ROM:187E		 out	 (3Ah),	a
+ROM:187E		 out	 (FDC_SECTOR), a ; FDC - Sector	number
 ROM:1880		 ld	 a, 0A8h ; '¿'   ; Write sector, sector size = 512
 ROM:1882		 call	 FDC_RUN_CMD_WITH_BITS ; Write command read status (a=i/o value)
 ROM:1885		 and	 11011100b	 ; error bits
@@ -5662,7 +5662,7 @@ ROM:18AE FDC_READ_TRACK:			 ; CODE	XREF: FDC_SUBHANDLER05_READ_TRACK+12p
 ROM:18AE		 call	 FDC_DMA_READ_TRACK
 ROM:18B1		 di	 
 ROM:18B2		 ld	 a, 0E0h ; 'Ó'   ; Read track
-ROM:18B4		 out	 (38h),	a
+ROM:18B4		 out	 (FDC_CMD_STAT), a ; FDC - Write command, Read status
 ROM:18B6 
 ROM:18B6 WAIT_FOR_INTRQ:			 ; CODE	XREF: FDC_READ_TRACK+Bj
 ROM:18B6		 call	 PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z flag
@@ -5670,7 +5670,7 @@ ROM:18B9		 jr	 z, WAIT_FOR_INTRQ
 ROM:18BB		 call	 CLOSE_BUS_WINDOW
 ROM:18BE		 ei	 
 ROM:18BF		 call	 CHECK_STUFF	 ; Called from *many* sites
-ROM:18C2		 in	 a, (38h)
+ROM:18C2		 in	 a, (FDC_CMD_STAT) ; FDC - Write command, Read status
 ROM:18C4		 and	 84h ; 'ä'       ; Error bits
 ROM:18C6		 ret	 z
 ROM:18C7		 scf	 
@@ -5686,7 +5686,7 @@ ROM:18C9 FDC_WRITE_TRACK:			 ; CODE	XREF: FDC_SUBHANDLER06_WRITE_TRACK+12p
 ROM:18C9		 call	 FDC_DMA_WRITE_TRACK
 ROM:18CC		 di	 
 ROM:18CD		 ld	 a, 0F0h ; '­'   ; Write track
-ROM:18CF		 out	 (38h),	a
+ROM:18CF		 out	 (FDC_CMD_STAT), a ; FDC - Write command, Read status
 ROM:18D1 
 ROM:18D1 loc_0_18D1:				 ; CODE	XREF: FDC_WRITE_TRACK+Bj
 ROM:18D1		 call	 PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z flag
@@ -5694,7 +5694,7 @@ ROM:18D4		 jr	 z, loc_0_18D1
 ROM:18D6		 call	 CLOSE_BUS_WINDOW
 ROM:18D9		 ei	 
 ROM:18DA		 call	 CHECK_STUFF	 ; Called from *many* sites
-ROM:18DD		 in	 a, (38h)
+ROM:18DD		 in	 a, (FDC_CMD_STAT) ; FDC - Write command, Read status
 ROM:18DF		 and	 0C4h ;	'─'      ; Error bits
 ROM:18E1		 ret	 z
 ROM:18E2		 scf	 
@@ -5770,14 +5770,14 @@ ROM:1913					 ; HANDLER08_FDC_sub_1547+5Fp
 ROM:1913					 ; FDC_COMMON_HANDLER+1Ap
 ROM:1913					 ; FDC_COMMON_HANDLER+59p
 ROM:1913					 ; FDC_COMMON_HANDLER+78p ...
-ROM:1913		 out	 (38h),	a
+ROM:1913		 out	 (FDC_CMD_STAT), a ; FDC - Write command, Read status
 ROM:1915 
 ROM:1915 loc_0_1915:				 ; CODE	XREF: FDC_RUN_CMD+8j
 ROM:1915		 call	 CHECK_STUFF	 ; Called from *many* sites
 ROM:1918		 call	 PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z flag
 ROM:191B		 jr	 z, loc_0_1915
 ROM:191D		 call	 CHECK_STUFF	 ; Called from *many* sites
-ROM:1920		 in	 a, (38h)
+ROM:1920		 in	 a, (FDC_CMD_STAT) ; FDC - Write command, Read status
 ROM:1922		 ret	 
 ROM:1922 ; End of function FDC_RUN_CMD
 ROM:1922 
@@ -6212,28 +6212,28 @@ ROM:1AF9		 ld	 a, (hl)
 ROM:1AFA		 cp	 2
 ROM:1AFC		 jr	 nz, loc_0_1B1E
 ROM:1AFE		 push	 hl
-ROM:1AFF		 out	 (95h),	a
+ROM:1AFF		 out	 (RTC_GO_CMD), a ; RTC - "GO" Command
 ROM:1B01		 inc	 hl
 ROM:1B02		 ld	 a, (hl)
-ROM:1B03		 out	 (82h),	a
+ROM:1B03		 out	 (RTC_SECONDS),	a ; RTC	- Counter - seconds
 ROM:1B05		 inc	 hl
 ROM:1B06		 ld	 a, (hl)
-ROM:1B07		 out	 (83h),	a
+ROM:1B07		 out	 (RTC_MINUTES),	a ; RTC	- Counter - minutes
 ROM:1B09		 inc	 hl
 ROM:1B0A		 ld	 a, (hl)
-ROM:1B0B		 out	 (84h),	a
+ROM:1B0B		 out	 (RTC_HOURS), a	 ; RTC - Counter - hours
 ROM:1B0D		 inc	 hl
 ROM:1B0E		 ld	 a, (hl)
-ROM:1B0F		 out	 (85h),	a
+ROM:1B0F		 out	 (RTC_DAY_OF_WEEK), a ;	RTC - Counter -	Day of Week
 ROM:1B11		 inc	 hl
 ROM:1B12		 ld	 a, (hl)
-ROM:1B13		 out	 (86h),	a
+ROM:1B13		 out	 (RTC_DAY_OF_MONTH), a ; RTC - Counter - Day of	Month
 ROM:1B15		 inc	 hl
 ROM:1B16		 ld	 a, (hl)
-ROM:1B17		 out	 (87h),	a
+ROM:1B17		 out	 (RTC_MONTHS), a ; RTC - Counter - Months
 ROM:1B19		 inc	 hl
 ROM:1B1A		 ld	 a, (hl)
-ROM:1B1B		 out	 (89h),	a
+ROM:1B1B		 out	 (RTC_LATCH_DCSEC), a ;	RTC - Latches -	Hundredths and tenths of seconds
 ROM:1B1D		 pop	 hl
 ROM:1B1E 
 ROM:1B1E loc_0_1B1E:				 ; CODE	XREF: HANDLER09_RTC_sub_1AD7+25j
@@ -6246,56 +6246,56 @@ ROM:1B1F					 ; HANDLER09_RTC_sub_1AD7+78j
 ROM:1B1F					 ; HANDLER09_RTC_sub_1AD7+85j ...
 ROM:1B1F		 pop	 hl
 ROM:1B20		 push	 hl
-ROM:1B21		 in	 a, (94h)
+ROM:1B21		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B23		 bit	 0, a
 ROM:1B25		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B28		 jr	 nz, loc_0_1B1F
 ROM:1B2A		 inc	 hl
-ROM:1B2B		 in	 a, (82h)
+ROM:1B2B		 in	 a, (RTC_SECONDS) ; RTC	- Counter - seconds
 ROM:1B2D		 ld	 (hl), a
-ROM:1B2E		 in	 a, (94h)
+ROM:1B2E		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B30		 bit	 0, a
 ROM:1B32		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B35		 jr	 nz, loc_0_1B1F
 ROM:1B37		 inc	 hl
-ROM:1B38		 in	 a, (83h)
+ROM:1B38		 in	 a, (RTC_MINUTES) ; RTC	- Counter - minutes
 ROM:1B3A		 ld	 (hl), a
-ROM:1B3B		 in	 a, (94h)
+ROM:1B3B		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B3D		 bit	 0, a
 ROM:1B3F		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B42		 jr	 nz, loc_0_1B1F
 ROM:1B44		 inc	 hl
-ROM:1B45		 in	 a, (84h)
+ROM:1B45		 in	 a, (RTC_HOURS)	 ; RTC - Counter - hours
 ROM:1B47		 ld	 (hl), a
-ROM:1B48		 in	 a, (94h)
+ROM:1B48		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B4A		 bit	 0, a
 ROM:1B4C		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B4F		 jr	 nz, loc_0_1B1F
 ROM:1B51		 inc	 hl
-ROM:1B52		 in	 a, (85h)
+ROM:1B52		 in	 a, (RTC_DAY_OF_WEEK) ;	RTC - Counter -	Day of Week
 ROM:1B54		 ld	 (hl), a
-ROM:1B55		 in	 a, (94h)
+ROM:1B55		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B57		 bit	 0, a
 ROM:1B59		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B5C		 jr	 nz, loc_0_1B1F
 ROM:1B5E		 inc	 hl
-ROM:1B5F		 in	 a, (86h)
+ROM:1B5F		 in	 a, (RTC_DAY_OF_MONTH) ; RTC - Counter - Day of	Month
 ROM:1B61		 ld	 (hl), a
-ROM:1B62		 in	 a, (94h)
+ROM:1B62		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B64		 bit	 0, a
 ROM:1B66		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B69		 jr	 nz, loc_0_1B1F
 ROM:1B6B		 inc	 hl
-ROM:1B6C		 in	 a, (87h)
+ROM:1B6C		 in	 a, (RTC_MONTHS) ; RTC - Counter - Months
 ROM:1B6E		 ld	 (hl), a
-ROM:1B6F		 in	 a, (94h)
+ROM:1B6F		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B71		 bit	 0, a
 ROM:1B73		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B76		 jr	 nz, loc_0_1B1F
 ROM:1B78		 inc	 hl
-ROM:1B79		 in	 a, (89h)
+ROM:1B79		 in	 a, (RTC_LATCH_DCSEC) ;	RTC - Latches -	Hundredths and tenths of seconds
 ROM:1B7B		 ld	 (hl), a
-ROM:1B7C		 in	 a, (94h)
+ROM:1B7C		 in	 a, (RTC_STATUS) ; RTC - Status	Bit
 ROM:1B7E		 bit	 0, a
 ROM:1B80		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:1B83		 jr	 nz, loc_0_1B1F

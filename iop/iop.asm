@@ -1078,7 +1078,7 @@ PIO_COMMAND_B_INIT:.db 11001111b, 10000100b, 0,	110111b, 11111111b ; DATA XREF:	
 
 PIO_A_NEG_LOW_4_BITS:			; CODE XREF: FDC_NEVIEM_sub_03B6+6p
 					; SIO_L1H_sub_0D4C+45p
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		cpl			; complement ~
 		and	0Fh
 		ret	
@@ -1091,7 +1091,7 @@ PIO_A_NEG_LOW_4_BITS:			; CODE XREF: FDC_NEVIEM_sub_03B6+6p
 ; Attributes: bp-based frame
 
 PIO_A_GET_BIT6:				; CODE XREF: DO_PIO_A_GET_BIT6p
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		and	40h ; '@'
 		ret	
 ; End of function PIO_A_GET_BIT6
@@ -1104,7 +1104,7 @@ PIO_A_GET_BIT6:				; CODE XREF: DO_PIO_A_GET_BIT6p
 
 PIO_A_GET_BIT7_FDC_INTRQ:		; CODE XREF: FDC_READ_TRACK+8p
 					; FDC_WRITE_TRACK+8p FDC_RUN_CMD+5p
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		and	80h ; 'Ç'
 		ret	
 ; End of function PIO_A_GET_BIT7_FDC_INTRQ
@@ -1116,7 +1116,7 @@ PIO_A_GET_BIT7_FDC_INTRQ:		; CODE XREF: FDC_READ_TRACK+8p
 ; Attributes: bp-based frame
 
 orphan_PIO_B_GET_BIT2_AUX_FDC:
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	4
 		ret	
 ; End of function orphan_PIO_B_GET_BIT2_AUX_FDC
@@ -1128,7 +1128,7 @@ orphan_PIO_B_GET_BIT2_AUX_FDC:
 ; Attributes: bp-based frame
 
 orphan_PIO_B_GET_BIT7_PIT_OUT2:
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	80h ; 'Ç'
 		ret	
 ; End of function orphan_PIO_B_GET_BIT7_PIT_OUT2
@@ -1139,9 +1139,9 @@ orphan_PIO_B_GET_BIT7_PIT_OUT2:
 ; Attributes: bp-based frame
 
 PIO_A_BIT5_ON:				; CODE XREF: DO_CHECK_STUFF+42j
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		or	20h ; ' '
-		out	(34h), a
+		out	(PIO_DATA_A), a	; PIO -	Data port A
 		ret	
 ; End of function PIO_A_BIT5_ON
 
@@ -1152,9 +1152,9 @@ PIO_A_BIT5_ON:				; CODE XREF: DO_CHECK_STUFF+42j
 
 PIO_A_BIT5_OFF:				; CODE XREF: DO_NMI_HANDLER+49p
 					; DO_CHECK_STUFF+15p
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		and	0DFh ; '▀'
-		out	(34h), a
+		out	(PIO_DATA_A), a	; PIO -	Data port A
 		ret	
 ; End of function PIO_A_BIT5_OFF
 
@@ -1211,10 +1211,10 @@ loc_0_389:				; CODE XREF: FDC_sub_0360+1Bj
 		jr	c, ZERO_TO_SOME_VAR_sub_03AC
 		ld	c, 0
 		call	SHIFT_OR_WHAT	; c=by how much
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	0FCh ; '³'      ; BIT1 off
 		or	l		; BIT0 on
-		out	(36h), a
+		out	(PIO_DATA_B), a	; PIO -	Data port B
 		ret	
 ; End of function FDC_sub_0360
 
@@ -1286,11 +1286,11 @@ FDC_SET_DRIVE_SELECT:			; CODE XREF: FDC_SELECT_DRIVE+2j
 		ld	l, b
 		ld	c, 3
 		call	SHIFT_OR_WHAT	; c=by how much
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	0E7h ; 'þ'      ; BIT3 BIT4 off DS0/DS1
 		or	l		; BIT0 on
 		xor	18h
-		out	(36h), a
+		out	(PIO_DATA_B), a	; PIO -	Data port B
 		ret	
 ; End of function FDC_SET_DRIVE_SELECT
 
@@ -1308,10 +1308,10 @@ FDC_SET_SIDE:				; CODE XREF: FDC_COMMON_HANDLER+4Dp
 		ld	l, a
 		ld	c, 5
 		call	SHIFT_OR_WHAT	; c=by how much
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	0DFh ; '▀'      ; BIT5 off (SIDE 0)
 		or	l		; BIT0 in
-		out	(36h), a
+		out	(PIO_DATA_B), a	; PIO -	Data port B
 		ret	
 ; End of function FDC_SET_SIDE
 
@@ -1328,10 +1328,10 @@ FDC_DMA_WHAT:				; CODE XREF: FDC_READ_SECTOR_DMA_sub_183D+Ep
 		ld	l, a
 		ld	c, 6
 		call	SHIFT_OR_WHAT	; c=by how much
-		in	a, (36h)
+		in	a, (PIO_DATA_B)	; PIO -	Data port B
 		and	0BFh ; '┐'      ; what
 		or	l		; what
-		out	(40h), a
+		out	(DMA_CLEAR), a	; DMA -	Clear carrier sense and	parity error bit
 		ret	
 ; End of function FDC_DMA_WHAT
 
@@ -1997,11 +1997,11 @@ loc_0_5ED:				; CODE XREF: sub_0_5CF+6j sub_0_5D7+Bj
 
 INIT_PIT1:				; CODE XREF: DO_NMI_HANDLER+97p
 		ld	a, 0B4h	; '┤'
-		out	(27h), a
+		out	(PIT1_CONTROL),	a ; PIT	1 - Control byte for PIT 1
 		ld	a, 0A8h	; '¿'
-		out	(26h), a
+		out	(PIT1_COUNTER_2), a ; PIT 1 - Counter 2	timer interrupt
 		ld	a, 61h ; 'a'
-		out	(25h), a
+		out	(PIT1_COUNTER_1), a ; PIT 1 - Counter 1	provides baud rate for port 5
 		ret	
 ; End of function INIT_PIT1
 
@@ -2240,10 +2240,10 @@ SIO0_sub_070B:				; DATA XREF: ROM:069Do
 
 loc_0_753:				; CODE XREF: SIO0_sub_070B+5Dj
 		di	
-		in	a, (40h)
+		in	a, (DMA_CLEAR)	; DMA -	Clear carrier sense and	parity error bit
 		nop	
 		nop	
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		and	10h
 		jr	z, loc_0_771
 		ei	
@@ -2274,7 +2274,7 @@ loc_0_771:				; CODE XREF: SIO0_sub_070B+51j
 		ld	b, e
 		call	DELAY_A_BIT	; b=by how much
 		ld	a, 87h ; 'ç'
-		out	(3Ch), a
+		out	(DMA_ALL), a	; DMA -	All read and write registers
 		nop	
 		nop	
 		nop	
@@ -2286,7 +2286,7 @@ loc_0_771:				; CODE XREF: SIO0_sub_070B+51j
 		ld	bc, 7D0h
 
 loc_0_7A8:				; CODE XREF: SIO0_sub_070B+A6j
-		in	a, (29h)
+		in	a, (SIO0_CHAN_A_CONTROL) ; SIO 0 - Channel A control for serial	port 3
 		bit	6, a
 		jr	nz, loc_0_7BC
 		dec	bc
@@ -2300,8 +2300,8 @@ loc_0_7A8:				; CODE XREF: SIO0_sub_070B+A6j
 
 loc_0_7BC:				; CODE XREF: SIO0_sub_070B+A1j
 		ld	a, 0BFh	; '┐'
-		out	(3Ch), a
-		in	a, (3Ch)
+		out	(DMA_ALL), a	; DMA -	All read and write registers
+		in	a, (DMA_ALL)	; DMA -	All read and write registers
 		bit	5, a
 		jr	z, loc_0_7CA
 		set	1, (iy+IY_STRUCT.field_2A)
@@ -2377,10 +2377,10 @@ SIO_sub_0807:				; CODE XREF: SIO0_sub_070B+D8j
 loc_0_816:				; CODE XREF: SIO_sub_0807+Aj
 		ld	de, sub_0_582
 		di	
-		in	a, (40h)
+		in	a, (DMA_CLEAR)	; DMA -	Clear carrier sense and	parity error bit
 		nop	
 		nop	
-		in	a, (34h)
+		in	a, (PIO_DATA_A)	; PIO -	Data port A
 		and	10h
 		jr	nz, loc_0_85B
 		call	SIO_sub_03A6
@@ -2435,8 +2435,8 @@ XINTH_sub_086B:				; CODE XREF: JINTH_sub_1070+4j
 
 loc_0_873:				; CODE XREF: XINTH_sub_086B+1Fj
 		ld	a, 1
-		out	(29h), a
-		in	a, (29h)
+		out	(SIO0_CHAN_A_CONTROL), a ; SIO 0 - Channel A control for serial	port 3
+		in	a, (SIO0_CHAN_A_CONTROL) ; SIO 0 - Channel A control for serial	port 3
 		bit	5, a
 		jr	nz, INTH_sub_08A9
 		bit	7, a
@@ -2458,7 +2458,7 @@ loc_0_88D:				; CODE XREF: XINTH_sub_086B+1Dj
 ; ───────────────────────────────────────────────────────────────────────────
 
 loc_0_89A:				; CODE XREF: XINTH_sub_086B+26j
-		in	a, (28h)
+		in	a, (SIO0_CHAN_A_DATA) ;	SIO 0 -	Channel	A data for serial port 3
 		ld	(iy+IY_STRUCT.field_29), a
 		set	5, (iy+IY_STRUCT.field_2A)
 		call	SIO0_CHANA_CTL_STH
@@ -2482,7 +2482,7 @@ INTH_sub_08A9:				; CODE XREF: XINTH_sub_086B+10j
 		ld	b, 2
 		inir	
 		call	DMA_ALL_STH
-		in	a, (28h)
+		in	a, (SIO0_CHAN_A_DATA) ;	SIO 0 -	Channel	A data for serial port 3
 		pop	af
 		and	60h ; '`'
 		or	1
@@ -2542,7 +2542,7 @@ sub_0_8FA:				; CODE XREF: sub_0_6AD+25p
 		res	0, (iy+IY_STRUCT.field_2A)
 		call	SIO0_sub_0918
 		ld	a, 87h ; 'ç'
-		out	(3Ch), a
+		out	(DMA_ALL), a	; DMA -	All read and write registers
 		jp	TAIL_EI
 ; End of function sub_0_8FA
 
@@ -2779,7 +2779,7 @@ SIO0_CHANA_CTL_STH:			; CODE XREF: SIO0_sub_06F3+3p
 					; SIO0_sub_070B+C5p SIO0_sub_07E6+16p
 					; XINTH_sub_086B+38p INTH_sub_08A9+20p
 		ld	a, 18h
-		out	(29h), a
+		out	(SIO0_CHAN_A_CONTROL), a ; SIO 0 - Channel A control for serial	port 3
 		ret	
 ; End of function SIO0_CHANA_CTL_STH
 
@@ -2791,7 +2791,7 @@ SIO0_CHANA_CTL_STH:			; CODE XREF: SIO0_sub_06F3+3p
 DMA_ALL_STH:				; CODE XREF: SIO0_sub_06F3p
 					; SIO0_sub_070B+ACp INTH_sub_08A9+12p
 		ld	a, 0C3h	; '├'
-		out	(3Ch), a
+		out	(DMA_ALL), a	; DMA -	All read and write registers
 		ret	
 ; End of function DMA_ALL_STH
 
@@ -4981,8 +4981,8 @@ HANDLER08_FDC_sub_1547:			; DATA XREF: ROM:0143o
 		xor	a
 		ld	(FDC_byte_268B), a
 		call	FDC_SELECT_DRIVE
-		in	a, (39h)
-		out	(3Bh), a
+		in	a, (FDC_TRACK)	; FDC -	Track number
+		out	(FDC_DATA), a	; FDC -	Read/Write data
 		ld	a, 10h		; Seek
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
@@ -5014,8 +5014,8 @@ loc_0_158A:				; CODE XREF: HANDLER08_FDC_sub_1547+50j
 		xor	a
 		ld	(FDC_byte_268B), a
 		call	FDC_SELECT_DRIVE
-		in	a, (39h)
-		out	(3Bh), a
+		in	a, (FDC_TRACK)	; FDC -	Track number
+		out	(FDC_DATA), a	; FDC -	Read/Write data
 		ld	a, 10h		; Seek
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
@@ -5384,8 +5384,8 @@ FDC_COMMON_HANDLER:			; CODE XREF: FDC_SUBHANDLER00_07_NOTHINGp
 		cp	(hl)
 		jr	z, loc_0_17C6
 		ld	(hl), a
-		in	a, (39h)
-		out	(3Bh), a
+		in	a, (FDC_TRACK)	; FDC -	Track number
+		out	(FDC_DATA), a	; FDC -	Read/Write data
 		ld	a, 18h		; Seek with head load
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
@@ -5416,8 +5416,8 @@ loc_0_17C6:				; CODE XREF: FDC_COMMON_HANDLER+11j
 		call	FDC_SET_SIDE
 		ld	a, 80h ; 'Ç'
 		ret	c
-		in	a, (39h)
-		out	(3Bh), a
+		in	a, (FDC_TRACK)	; FDC -	Track number
+		out	(FDC_DATA), a	; FDC -	Read/Write data
 		ld	a, 18h		; Seek with head load
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
@@ -5463,17 +5463,17 @@ FDC_SEEK_AND_LOAD_HEAD:			; CODE XREF: FDC_SUBHANDLER01_SEEK+6p
 		call	ADD_WORD16	; hl+=a
 		ld	a, (hl)
 		call	FDC_ADJUST_TRACK_NUM
-		out	(39h), a
+		out	(FDC_TRACK), a	; FDC -	Track number
 		ld	a, (byte_0_268F)
 		ld	(hl), a
 		push	af
 		call	FDC_ADJUST_TRACK_NUM
-		out	(3Bh), a
+		out	(FDC_DATA), a	; FDC -	Read/Write data
 		ld	a, 18h		; Seek with head load
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
 		pop	af
-		out	(39h), a
+		out	(FDC_TRACK), a	; FDC -	Track number
 		xor	a
 		ret	
 ; End of function FDC_SEEK_AND_LOAD_HEAD
@@ -5508,7 +5508,7 @@ FDC_READ_SECTOR_DMA_sub_183D:		; CODE XREF: FDC_SUBHANDLER02_READ_SECTOR+12p
 		ld	a, (byte_0_2690)
 		call	FDC_SET_SIDE
 		ld	a, (byte_0_2691)
-		out	(3Ah), a
+		out	(FDC_SECTOR), a	; FDC -	Sector number
 		ld	a, 88h ; 'ê'    ; Read sector, sector size = 512
 		call	FDC_RUN_CMD_WITH_BITS ;	Write command read status (a=i/o value)
 		and	10011100b	; 1001 1100 -- error bits
@@ -5533,7 +5533,7 @@ FDC_WRITE_SECTOR_DMA_sub_1864:		; CODE XREF: FDC_SUBHANDLER03_WRITE_SECTOR+15p
 		ld	a, (byte_0_2690)
 		call	FDC_SET_SIDE
 		ld	a, (byte_0_2691)
-		out	(3Ah), a
+		out	(FDC_SECTOR), a	; FDC -	Sector number
 		ld	a, 0A8h	; '¿'   ; Write sector, sector size = 512
 		call	FDC_RUN_CMD_WITH_BITS ;	Write command read status (a=i/o value)
 		and	11011100b	; error	bits
@@ -5599,7 +5599,7 @@ FDC_READ_TRACK:				; CODE XREF: FDC_SUBHANDLER05_READ_TRACK+12p
 		call	FDC_DMA_READ_TRACK
 		di	
 		ld	a, 0E0h	; 'Ó'   ; Read track
-		out	(38h), a
+		out	(FDC_CMD_STAT),	a ; FDC	- Write	command, Read status
 
 WAIT_FOR_INTRQ:				; CODE XREF: FDC_READ_TRACK+Bj
 		call	PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z	flag
@@ -5607,7 +5607,7 @@ WAIT_FOR_INTRQ:				; CODE XREF: FDC_READ_TRACK+Bj
 		call	CLOSE_BUS_WINDOW
 		ei	
 		call	CHECK_STUFF	; Called from *many* sites
-		in	a, (38h)
+		in	a, (FDC_CMD_STAT) ; FDC	- Write	command, Read status
 		and	84h ; 'ä'       ; Error bits
 		ret	z
 		scf	
@@ -5623,7 +5623,7 @@ FDC_WRITE_TRACK:			; CODE XREF: FDC_SUBHANDLER06_WRITE_TRACK+12p
 		call	FDC_DMA_WRITE_TRACK
 		di	
 		ld	a, 0F0h	; '­'   ; Write track
-		out	(38h), a
+		out	(FDC_CMD_STAT),	a ; FDC	- Write	command, Read status
 
 loc_0_18D1:				; CODE XREF: FDC_WRITE_TRACK+Bj
 		call	PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z	flag
@@ -5631,7 +5631,7 @@ loc_0_18D1:				; CODE XREF: FDC_WRITE_TRACK+Bj
 		call	CLOSE_BUS_WINDOW
 		ei	
 		call	CHECK_STUFF	; Called from *many* sites
-		in	a, (38h)
+		in	a, (FDC_CMD_STAT) ; FDC	- Write	command, Read status
 		and	0C4h ; '─'      ; Error bits
 		ret	z
 		scf	
@@ -5707,14 +5707,14 @@ FDC_RUN_CMD:				; CODE XREF: HANDLER08_FDC_sub_1547+27p
 					; FDC_COMMON_HANDLER+1Ap
 					; FDC_COMMON_HANDLER+59p
 					; FDC_COMMON_HANDLER+78p ...
-		out	(38h), a
+		out	(FDC_CMD_STAT),	a ; FDC	- Write	command, Read status
 
 loc_0_1915:				; CODE XREF: FDC_RUN_CMD+8j
 		call	CHECK_STUFF	; Called from *many* sites
 		call	PIO_A_GET_BIT7_FDC_INTRQ ; result: a, z	flag
 		jr	z, loc_0_1915
 		call	CHECK_STUFF	; Called from *many* sites
-		in	a, (38h)
+		in	a, (FDC_CMD_STAT) ; FDC	- Write	command, Read status
 		ret	
 ; End of function FDC_RUN_CMD
 
@@ -6147,28 +6147,28 @@ loc_0_1AE4:				; CODE XREF: HANDLER09_RTC_sub_1AD7+C4j
 		cp	2
 		jr	nz, loc_0_1B1E
 		push	hl
-		out	(95h), a
+		out	(RTC_GO_CMD), a	; RTC -	"GO" Command
 		inc	hl
 		ld	a, (hl)
-		out	(82h), a
+		out	(RTC_SECONDS), a ; RTC - Counter - seconds
 		inc	hl
 		ld	a, (hl)
-		out	(83h), a
+		out	(RTC_MINUTES), a ; RTC - Counter - minutes
 		inc	hl
 		ld	a, (hl)
-		out	(84h), a
+		out	(RTC_HOURS), a	; RTC -	Counter	- hours
 		inc	hl
 		ld	a, (hl)
-		out	(85h), a
+		out	(RTC_DAY_OF_WEEK), a ; RTC - Counter - Day of Week
 		inc	hl
 		ld	a, (hl)
-		out	(86h), a
+		out	(RTC_DAY_OF_MONTH), a ;	RTC - Counter -	Day of Month
 		inc	hl
 		ld	a, (hl)
-		out	(87h), a
+		out	(RTC_MONTHS), a	; RTC -	Counter	- Months
 		inc	hl
 		ld	a, (hl)
-		out	(89h), a
+		out	(RTC_LATCH_DCSEC), a ; RTC - Latches - Hundredths and tenths of	seconds
 		pop	hl
 
 loc_0_1B1E:				; CODE XREF: HANDLER09_RTC_sub_1AD7+25j
@@ -6181,56 +6181,56 @@ loc_0_1B1F:				; CODE XREF: HANDLER09_RTC_sub_1AD7+51j
 					; HANDLER09_RTC_sub_1AD7+85j ...
 		pop	hl
 		push	hl
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (82h)
+		in	a, (RTC_SECONDS) ; RTC - Counter - seconds
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (83h)
+		in	a, (RTC_MINUTES) ; RTC - Counter - minutes
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (84h)
+		in	a, (RTC_HOURS)	; RTC -	Counter	- hours
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (85h)
+		in	a, (RTC_DAY_OF_WEEK) ; RTC - Counter - Day of Week
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (86h)
+		in	a, (RTC_DAY_OF_MONTH) ;	RTC - Counter -	Day of Month
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (87h)
+		in	a, (RTC_MONTHS)	; RTC -	Counter	- Months
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
 		inc	hl
-		in	a, (89h)
+		in	a, (RTC_LATCH_DCSEC) ; RTC - Latches - Hundredths and tenths of	seconds
 		ld	(hl), a
-		in	a, (94h)
+		in	a, (RTC_STATUS)	; RTC -	Status Bit
 		bit	0, a
 		call	nz, CHECK_STUFF	; Called from *many* sites
 		jr	nz, loc_0_1B1F
