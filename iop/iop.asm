@@ -5023,7 +5023,7 @@ loc_0_158A:				; CODE XREF: HANDLER08_FDC_sub_1547+50j
 loc_0_15A9:				; CODE XREF: HANDLER08_FDC_sub_1547+34j
 		call	ZERO_SAVED_TASK_sub_028C
 		call	CHECK_STUFF	; Called from *many* sites
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		and	1
 		call	FDC_NEVIEM_sub_03B6 ; A=param (2?)
 		ld	a, 0C8h	; '╚'
@@ -5144,7 +5144,7 @@ loc_0_1675:				; CODE XREF: HANDLER08_FDC_sub_1547+12Aj
 		call	FDC_sub_1969
 		jr	c, GO_OUT
 		call	FDC_PICK_HANDLER_FROM_VECTOR
-		ld	(byte_0_268D), a
+		ld	(FDC_SUBC_STATUS), a
 		call	FDC_sub_1971
 		ld	a, (iy+FDC_IY_PARAMS.field_7)
 		inc	a
@@ -5176,7 +5176,7 @@ loc_0_16A0:				; CODE XREF: HANDLER08_FDC_sub_1547+152j
 ; Attributes: bp-based frame
 
 FDC_PICK_HANDLER_FROM_VECTOR:		; CODE XREF: HANDLER08_FDC_sub_1547+133p
-		ld	a, (FDC_SUB_COMMAND_BUFFER)
+		ld	a, (FDC_SUB_COMMAND_RETRY)
 		push	af
 		inc	a
 		and	1111b
@@ -5206,7 +5206,7 @@ A_IS_VALID_COMMAND:			; CODE XREF: FDC_PICK_HANDLER_FROM_VECTOR+7j
 
 ; Attributes: bp-based frame
 
-FDC_HANDLER_ERROR_TAIL:			; CODE XREF: FDC_SUBHANDLER00_07_NOTHING+3j
+FDC_HANDLER_TAIL:			; CODE XREF: FDC_SUBHANDLER00_07_NOTHING+3j
 					; FDC_SUBHANDLER01_SEEK+3j
 					; FDC_SUBHANDLER01_SEEK+9j
 					; FDC_SUBHANDLER02_READ_SECTOR+3j
@@ -5216,17 +5216,17 @@ FDC_HANDLER_ERROR_TAIL:			; CODE XREF: FDC_SUBHANDLER00_07_NOTHING+3j
 		ld	a, (FDC_SUBCOMMAND)
 		cp	(hl)
 		ld	a, b
-		jr	nz, loc_0_16DC
+		jr	nz, CALL_FDC_HANDLER
 		ld	hl, FDC_COMMAND_BITS_ALSO
 		set	7, (hl)
 		ret	
 ; ───────────────────────────────────────────────────────────────────────────
 
-loc_0_16DC:				; CODE XREF: FDC_HANDLER_ERROR_TAIL+9j
+CALL_FDC_HANDLER:			; CODE XREF: FDC_HANDLER_TAIL+9j
 		inc	(hl)
 		ld	hl, (FDC_HANDLER_ADDRESS) ; Handler address
 		jp	(hl)		; Call the handler
-; End of function FDC_HANDLER_ERROR_TAIL
+; End of function FDC_HANDLER_TAIL
 
 ; ───────────────────────────────────────────────────────────────────────────
 FDC_SUBHANDLER_VECTOR:.dw FDC_SUBHANDLER00_07_NOTHING, FDC_SUBHANDLER01_SEEK
@@ -5241,7 +5241,7 @@ FDC_SUBHANDLER_VECTOR:.dw FDC_SUBHANDLER00_07_NOTHING, FDC_SUBHANDLER01_SEEK
 
 FDC_SUBHANDLER00_07_NOTHING:		; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ret	
 ; End of function FDC_SUBHANDLER00_07_NOTHING
 
@@ -5252,9 +5252,9 @@ FDC_SUBHANDLER00_07_NOTHING:		; DATA XREF: ROM:16E1o
 
 FDC_SUBHANDLER01_SEEK:			; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		call	FDC_SEEK_AND_LOAD_HEAD
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ret	
 ; End of function FDC_SUBHANDLER01_SEEK
 
@@ -5265,9 +5265,9 @@ FDC_SUBHANDLER01_SEEK:			; DATA XREF: ROM:16E1o
 
 FDC_SUBHANDLER02_READ_SECTOR:		; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		call	FDC_SEEK_AND_LOAD_HEAD
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ld	hl, 2048
 		call	FDC_sub_0360	; Called on sector/track read write. PORTB low 2 bits touched
 		call	FDC_READ_SECTOR_DMA_sub_183D
@@ -5285,9 +5285,9 @@ FDC_SUBHANDLER02_READ_SECTOR:		; DATA XREF: ROM:16E1o
 
 FDC_SUBHANDLER03_WRITE_SECTOR:		; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		call	FDC_SEEK_AND_LOAD_HEAD
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ld	hl, 2048
 		call	FDC_sub_0360	; Called on sector/track read write. PORTB low 2 bits touched
 		call	FDC_READ_BUS
@@ -5315,9 +5315,9 @@ FDC_SUBHANDLER04_CHECK_IS_ZERO:		; DATA XREF: ROM:16E1o
 
 FDC_SUBHANDLER05_READ_TRACK:		; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		call	FDC_SEEK_AND_LOAD_HEAD
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ld	hl, 2048
 		call	FDC_sub_0360	; Called on sector/track read write. PORTB low 2 bits touched
 		call	FDC_READ_TRACK
@@ -5334,9 +5334,9 @@ FDC_SUBHANDLER05_READ_TRACK:		; DATA XREF: ROM:16E1o
 
 FDC_SUBHANDLER06_WRITE_TRACK:		; DATA XREF: ROM:16E1o
 		call	FDC_COMMON_HANDLER ; Called at the beginning of	all floppy handlers
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		call	FDC_SEEK_AND_LOAD_HEAD
-		jp	c, FDC_HANDLER_ERROR_TAIL
+		jp	c, FDC_HANDLER_TAIL
 		ld	hl, 2048
 		call	FDC_sub_0360	; Called on sector/track read write. PORTB low 2 bits touched
 		call	FDC_WRITE_TRACK
@@ -5360,7 +5360,7 @@ FDC_ERROR_COMMON_sub_1781:		; CODE XREF: FDC_SUBHANDLER02_READ_SECTOR+15j
 		call	CLOSE_BUS_WINDOW
 		call	ZERO_TO_SOME_VAR_sub_03AC
 		pop	af
-		jp	FDC_HANDLER_ERROR_TAIL
+		jp	FDC_HANDLER_TAIL
 ; End of function FDC_ERROR_COMMON_sub_1781
 
 
@@ -5374,12 +5374,12 @@ FDC_COMMON_HANDLER:			; CODE XREF: FDC_SUBHANDLER00_07_NOTHINGp
 					; FDC_SUBHANDLER02_READ_SECTORp
 					; FDC_SUBHANDLER03_WRITE_SECTORp
 					; FDC_SUBHANDLER05_READ_TRACKp	...
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		call	FDC_NEVIEM_sub_03B6 ; A=param (2?)
 		ld	a, 80h ; 'Ç'
 		ret	c
 		ld	hl, FDC_byte_268B
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		inc	a
 		cp	(hl)
 		jr	z, loc_0_17C6
@@ -5404,7 +5404,7 @@ LOOP_AROUND_FOR_A_WHILE:		; CODE XREF: FDC_COMMON_HANDLER+38j
 		jr	nz, LOOP_AROUND_FOR_A_WHILE
 
 loc_0_17C6:				; CODE XREF: FDC_COMMON_HANDLER+11j
-		ld	a, (byte_0_2690)
+		ld	a, (FDC_SUBC_SIDE)
 		and	1
 		add	a, a
 		ld	b, a
@@ -5412,7 +5412,7 @@ loc_0_17C6:				; CODE XREF: FDC_COMMON_HANDLER+11j
 		res	1, a
 		or	b
 		ld	(FDC_COMMAND_BITS), a ;	Some bits to OR	with command. (Seen 0x2	= r1)
-		ld	a, (byte_0_2690)
+		ld	a, (FDC_SUBC_SIDE)
 		call	FDC_SET_SIDE
 		ld	a, 80h ; 'Ç'
 		ret	c
@@ -5429,7 +5429,7 @@ loc_0_17C6:				; CODE XREF: FDC_COMMON_HANDLER+11j
 		call	FDC_sub_04AA_FALLTHRU
 		push	de		; de=FDC_IX_STRUCT
 		pop	ix		; ix=FDC_IX_STRUCT
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		inc	a
 		ld	hl, FDC_byte_2687 ; Written on error
 		and	(hl)
@@ -5440,7 +5440,7 @@ loc_0_17C6:				; CODE XREF: FDC_COMMON_HANDLER+11j
 		ld	a, 8		; Restore (seek	zero) with head	load
 		call	FDC_RUN_CMD	; Write	command	read status (a=i/o value)
 					; Called on init
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		ld	hl, unk_0_267E
 		call	ADD_WORD16	; hl+=a
 		xor	a
@@ -5458,13 +5458,13 @@ FDC_SEEK_AND_LOAD_HEAD:			; CODE XREF: FDC_SUBHANDLER01_SEEK+6p
 					; FDC_SUBHANDLER03_WRITE_SECTOR+6p
 					; FDC_SUBHANDLER05_READ_TRACK+6p
 					; FDC_SUBHANDLER06_WRITE_TRACK+6p
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		ld	hl, unk_0_267E
 		call	ADD_WORD16	; hl+=a
 		ld	a, (hl)
 		call	FDC_ADJUST_TRACK_NUM
 		out	(FDC_TRACK), a	; FDC -	Track number
-		ld	a, (byte_0_268F)
+		ld	a, (FDC_SUBC_TRACK)
 		ld	(hl), a
 		push	af
 		call	FDC_ADJUST_TRACK_NUM
@@ -5505,9 +5505,9 @@ FDC_READ_SECTOR_DMA_sub_183D:		; CODE XREF: FDC_SUBHANDLER02_READ_SECTOR+12p
 		otir	
 		ld	a, 0
 		call	FDC_DMA_WHAT
-		ld	a, (byte_0_2690)
+		ld	a, (FDC_SUBC_SIDE)
 		call	FDC_SET_SIDE
-		ld	a, (byte_0_2691)
+		ld	a, (FDC_SUBC_SECTOR)
 		out	(FDC_SECTOR), a	; FDC -	Sector number
 		ld	a, 88h ; 'ê'    ; Read sector, sector size = 512
 		call	FDC_RUN_CMD_WITH_BITS ;	Write command read status (a=i/o value)
@@ -5530,9 +5530,9 @@ FDC_WRITE_SECTOR_DMA_sub_1864:		; CODE XREF: FDC_SUBHANDLER03_WRITE_SECTOR+15p
 		otir	
 		ld	a, 0
 		call	FDC_DMA_WHAT
-		ld	a, (byte_0_2690)
+		ld	a, (FDC_SUBC_SIDE)
 		call	FDC_SET_SIDE
-		ld	a, (byte_0_2691)
+		ld	a, (FDC_SUBC_SECTOR)
 		out	(FDC_SECTOR), a	; FDC -	Sector number
 		ld	a, 0A8h	; '¿'   ; Write sector, sector size = 512
 		call	FDC_RUN_CMD_WITH_BITS ;	Write command read status (a=i/o value)
@@ -5577,7 +5577,7 @@ FDC_READ_BUS:				; CODE XREF: FDC_SUBHANDLER03_WRITE_SECTOR+12p
 
 FDC_READ_LEN_AND_STH_FROM_BUF_sub_189B:	; CODE XREF: FDC_WRITE_BUSp
 					; FDC_READ_BUSp
-		ld	hl, word_0_2692
+		ld	hl, FDC_SUBC_BUF_LO
 		ld	e, (hl)
 		inc	hl
 		ld	d, (hl)
@@ -5658,7 +5658,7 @@ orphan_sub_18E4:
 ; Attributes: bp-based frame
 
 orphan_sub_18F2:			; CODE XREF: orphan_sub_18E4+3p
-		ld	hl, word_0_2692
+		ld	hl, FDC_SUBC_BUF_LO
 		push	hl
 		ld	e, (hl)
 		inc	hl
@@ -5726,7 +5726,7 @@ loc_0_1915:				; CODE XREF: FDC_RUN_CMD+8j
 FDC_SECTOR_IO_ERROR:			; CODE XREF: FDC_READ_SECTOR_DMA_sub_183D+23j
 					; FDC_WRITE_SECTOR_DMA_sub_1864+23j
 		ld	b, a
-		ld	a, (byte_0_268E)
+		ld	a, (FDC_SUBC_DRIVE_NUM)
 		inc	a
 		ld	hl, FDC_byte_2687 ; Written on error
 		or	(hl)
@@ -5871,7 +5871,7 @@ FDC_sub_1978:				; CODE XREF: FDC_sub_1969p
 		inc	hl
 		ld	a, (hl)
 		ex	de, hl
-		ld	de, FDC_SUB_COMMAND_BUFFER
+		ld	de, FDC_SUB_COMMAND_RETRY
 		ld	bc, 9
 		ret	
 ; End of function FDC_sub_1978
@@ -5924,8 +5924,8 @@ FDC_DMA_READ_TRACK:			; CODE XREF: FDC_READ_TRACKp
 		ld	b, 5
 		ld	c, DMA_ALL	; DMA -	All read and write registers
 		otir	
-		ld	hl, (word_0_2692)
-		ld	a, (byte_0_2694)
+		ld	hl, (FDC_SUBC_BUF_LO)
+		ld	a, (FDC_SUBC_BUF_HI)
 		push	hl
 		push	bc
 		call	BUS_READ8	; hl=host address
@@ -5961,8 +5961,8 @@ FDC_DMA_WRITE_TRACK:			; CODE XREF: FDC_WRITE_TRACKp
 		ld	b, 5
 		ld	c, DMA_ALL	; DMA -	All read and write registers
 		otir	
-		ld	hl, (word_0_2692)
-		ld	a, (byte_0_2694)
+		ld	hl, (FDC_SUBC_BUF_LO)
+		ld	a, (FDC_SUBC_BUF_HI)
 		push	hl
 		call	OPEN_BUS_WINDOW	; Set 0x8000 window to access A:HL bus address
 		pop	hl
@@ -7756,12 +7756,12 @@ unk_0_267E:	.block 1		; DATA XREF: MONITOR_PROMPTo
 					; FDC_SEEK_AND_LOAD_HEAD+3o
 		.block 1
 FDC_HANDLER_ADDRESS:.block 2		; DATA XREF: FDC_PICK_HANDLER_FROM_VECTOR+22w
-					; FDC_HANDLER_ERROR_TAIL+12r
+					; FDC_HANDLER_TAIL+12r
 					; Handler address
 FDC_SUBCOMMAND:	.block 1		; DATA XREF: FDC_PICK_HANDLER_FROM_VECTOR+Bw
-					; FDC_HANDLER_ERROR_TAIL+4r
+					; FDC_HANDLER_TAIL+4r
 FDC_ZERO:	.block 1		; DATA XREF: FDC_PICK_HANDLER_FROM_VECTOR+Fw
-					; FDC_HANDLER_ERROR_TAIL+1o
+					; FDC_HANDLER_TAIL+1o
 FDC_SOME_BUS_BUF3:.block 3		; DATA XREF: FDC_sub_1978+24o
 					; FDC_sub_1978+2Do
 FDC_byte_2687:	.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+6w
@@ -7779,27 +7779,31 @@ FDC_07D0_word_2689:.block 2		; DATA XREF: HANDLER08_FDC_sub_1547+13w
 FDC_byte_268B:	.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+1Bw
 					; HANDLER08_FDC_sub_1547+53w
 					; FDC_COMMON_HANDLER+9o
-FDC_SUB_COMMAND_BUFFER:.block 1		; DATA XREF: FDC_PICK_HANDLER_FROM_VECTORr
+--------------------------------------
+Floppy subcommand buffer (queue	entry)
+FDC_SUB_COMMAND_RETRY:.block 1		; DATA XREF: FDC_PICK_HANDLER_FROM_VECTORr
 					; FDC_sub_1978+36o
-byte_0_268D:	.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+136w
-byte_0_268E:	.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+68r
+FDC_SUBC_STATUS:.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+136w
+FDC_SUBC_DRIVE_NUM:.block 1		; DATA XREF: HANDLER08_FDC_sub_1547+68r
 					; FDC_COMMON_HANDLERr
 					; FDC_COMMON_HANDLER+Cr
 					; FDC_COMMON_HANDLER+6Ar
 					; FDC_COMMON_HANDLER+7Br ...
-byte_0_268F:	.block 1		; DATA XREF: FDC_SEEK_AND_LOAD_HEAD+Fr
-byte_0_2690:	.block 1		; DATA XREF: FDC_COMMON_HANDLER+3Ar
+FDC_SUBC_TRACK:	.block 1		; DATA XREF: FDC_SEEK_AND_LOAD_HEAD+Fr
+FDC_SUBC_SIDE:	.block 1		; DATA XREF: FDC_COMMON_HANDLER+3Ar
 					; FDC_COMMON_HANDLER+4Ar
 					; FDC_READ_SECTOR_DMA_sub_183D+11r
 					; FDC_WRITE_SECTOR_DMA_sub_1864+11r
-byte_0_2691:	.block 1		; DATA XREF: FDC_READ_SECTOR_DMA_sub_183D+17r
+FDC_SUBC_SECTOR:.block 1		; DATA XREF: FDC_READ_SECTOR_DMA_sub_183D+17r
 					; FDC_WRITE_SECTOR_DMA_sub_1864+17r
-word_0_2692:	.block 2		; DATA XREF: FDC_READ_LEN_AND_STH_FROM_BUF_sub_189Bo
+FDC_SUBC_BUF_LO:.block 2		; DATA XREF: FDC_READ_LEN_AND_STH_FROM_BUF_sub_189Bo
 					; orphan_sub_18F2o
 					; FDC_DMA_READ_TRACK+9r
 					; FDC_DMA_WRITE_TRACK+9r
-byte_0_2694:	.block 1		; DATA XREF: FDC_DMA_READ_TRACK+Cr
+FDC_SUBC_BUF_HI:.block 1		; DATA XREF: FDC_DMA_READ_TRACK+Cr
 					; FDC_DMA_WRITE_TRACK+Cr
+--------------------------------------
+
 		.block 1
 ADDRESS_LATCH_SET_VALUE:.block 1	; DATA XREF: SET_BUS_ADDRESS_LATCH+Cw
 LAST_CMD_COUNTER:.block	1		; DATA XREF: HANDLER00_sub_1A3D+Bo

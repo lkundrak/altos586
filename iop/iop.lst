@@ -5086,7 +5086,7 @@ ROM:15A9
 ROM:15A9 loc_0_15A9:				 ; CODE	XREF: HANDLER08_FDC_sub_1547+34j
 ROM:15A9		 call	 ZERO_SAVED_TASK_sub_028C
 ROM:15AC		 call	 CHECK_STUFF	 ; Called from *many* sites
-ROM:15AF		 ld	 a, (byte_0_268E)
+ROM:15AF		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:15B2		 and	 1
 ROM:15B4		 call	 FDC_NEVIEM_sub_03B6 ; A=param (2?)
 ROM:15B7		 ld	 a, 0C8h ; '╚'
@@ -5207,7 +5207,7 @@ ROM:1675 loc_0_1675:				 ; CODE	XREF: HANDLER08_FDC_sub_1547+12Aj
 ROM:1675		 call	 FDC_sub_1969
 ROM:1678		 jr	 c, GO_OUT
 ROM:167A		 call	 FDC_PICK_HANDLER_FROM_VECTOR
-ROM:167D		 ld	 (byte_0_268D),	a
+ROM:167D		 ld	 (FDC_SUBC_STATUS), a
 ROM:1680		 call	 FDC_sub_1971
 ROM:1683		 ld	 a, (iy+FDC_IY_PARAMS.field_7)
 ROM:1686		 inc	 a
@@ -5239,7 +5239,7 @@ ROM:16A6
 ROM:16A6 ; Attributes: bp-based	frame
 ROM:16A6 
 ROM:16A6 FDC_PICK_HANDLER_FROM_VECTOR:		 ; CODE	XREF: HANDLER08_FDC_sub_1547+133p
-ROM:16A6		 ld	 a, (FDC_SUB_COMMAND_BUFFER)
+ROM:16A6		 ld	 a, (FDC_SUB_COMMAND_RETRY)
 ROM:16A9		 push	 af
 ROM:16AA		 inc	 a
 ROM:16AB		 and	 1111b
@@ -5269,7 +5269,7 @@ ROM:16CB ; ███████████████ S U B R O U T I N E █
 ROM:16CB 
 ROM:16CB ; Attributes: bp-based	frame
 ROM:16CB 
-ROM:16CB FDC_HANDLER_ERROR_TAIL:		 ; CODE	XREF: FDC_SUBHANDLER00_07_NOTHING+3j
+ROM:16CB FDC_HANDLER_TAIL:			 ; CODE	XREF: FDC_SUBHANDLER00_07_NOTHING+3j
 ROM:16CB					 ; FDC_SUBHANDLER01_SEEK+3j
 ROM:16CB					 ; FDC_SUBHANDLER01_SEEK+9j
 ROM:16CB					 ; FDC_SUBHANDLER02_READ_SECTOR+3j
@@ -5279,17 +5279,17 @@ ROM:16CC		 ld	 hl, FDC_ZERO
 ROM:16CF		 ld	 a, (FDC_SUBCOMMAND)
 ROM:16D2		 cp	 (hl)
 ROM:16D3		 ld	 a, b
-ROM:16D4		 jr	 nz, loc_0_16DC
+ROM:16D4		 jr	 nz, CALL_FDC_HANDLER
 ROM:16D6		 ld	 hl, FDC_COMMAND_BITS_ALSO
 ROM:16D9		 set	 7, (hl)
 ROM:16DB		 ret	 
 ROM:16DC ; ───────────────────────────────────────────────────────────────────────────
 ROM:16DC 
-ROM:16DC loc_0_16DC:				 ; CODE	XREF: FDC_HANDLER_ERROR_TAIL+9j
+ROM:16DC CALL_FDC_HANDLER:			 ; CODE	XREF: FDC_HANDLER_TAIL+9j
 ROM:16DC		 inc	 (hl)
 ROM:16DD		 ld	 hl, (FDC_HANDLER_ADDRESS) ; Handler address
 ROM:16E0		 jp	 (hl)		 ; Call	the handler
-ROM:16E0 ; End of function FDC_HANDLER_ERROR_TAIL
+ROM:16E0 ; End of function FDC_HANDLER_TAIL
 ROM:16E0 
 ROM:16E0 ; ───────────────────────────────────────────────────────────────────────────
 ROM:16E1 FDC_SUBHANDLER_VECTOR:.dw FDC_SUBHANDLER00_07_NOTHING,	FDC_SUBHANDLER01_SEEK
@@ -5304,7 +5304,7 @@ ROM:16F1 ; Attributes: bp-based	frame
 ROM:16F1 
 ROM:16F1 FDC_SUBHANDLER00_07_NOTHING:		 ; DATA	XREF: ROM:16E1o
 ROM:16F1		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:16F4		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:16F4		 jp	 c, FDC_HANDLER_TAIL
 ROM:16F7		 ret	 
 ROM:16F7 ; End of function FDC_SUBHANDLER00_07_NOTHING
 ROM:16F7 
@@ -5315,9 +5315,9 @@ ROM:16F8 ; Attributes: bp-based	frame
 ROM:16F8 
 ROM:16F8 FDC_SUBHANDLER01_SEEK:			 ; DATA	XREF: ROM:16E1o
 ROM:16F8		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:16FB		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:16FB		 jp	 c, FDC_HANDLER_TAIL
 ROM:16FE		 call	 FDC_SEEK_AND_LOAD_HEAD
-ROM:1701		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:1701		 jp	 c, FDC_HANDLER_TAIL
 ROM:1704		 ret	 
 ROM:1704 ; End of function FDC_SUBHANDLER01_SEEK
 ROM:1704 
@@ -5328,9 +5328,9 @@ ROM:1705 ; Attributes: bp-based	frame
 ROM:1705 
 ROM:1705 FDC_SUBHANDLER02_READ_SECTOR:		 ; DATA	XREF: ROM:16E1o
 ROM:1705		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:1708		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:1708		 jp	 c, FDC_HANDLER_TAIL
 ROM:170B		 call	 FDC_SEEK_AND_LOAD_HEAD
-ROM:170E		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:170E		 jp	 c, FDC_HANDLER_TAIL
 ROM:1711		 ld	 hl, 2048
 ROM:1714		 call	 FDC_sub_0360	 ; Called on sector/track read write. PORTB low	2 bits touched
 ROM:1717		 call	 FDC_READ_SECTOR_DMA_sub_183D
@@ -5348,9 +5348,9 @@ ROM:1725 ; Attributes: bp-based	frame
 ROM:1725 
 ROM:1725 FDC_SUBHANDLER03_WRITE_SECTOR:		 ; DATA	XREF: ROM:16E1o
 ROM:1725		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:1728		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:1728		 jp	 c, FDC_HANDLER_TAIL
 ROM:172B		 call	 FDC_SEEK_AND_LOAD_HEAD
-ROM:172E		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:172E		 jp	 c, FDC_HANDLER_TAIL
 ROM:1731		 ld	 hl, 2048
 ROM:1734		 call	 FDC_sub_0360	 ; Called on sector/track read write. PORTB low	2 bits touched
 ROM:1737		 call	 FDC_READ_BUS
@@ -5378,9 +5378,9 @@ ROM:1747 ; Attributes: bp-based	frame
 ROM:1747 
 ROM:1747 FDC_SUBHANDLER05_READ_TRACK:		 ; DATA	XREF: ROM:16E1o
 ROM:1747		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:174A		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:174A		 jp	 c, FDC_HANDLER_TAIL
 ROM:174D		 call	 FDC_SEEK_AND_LOAD_HEAD
-ROM:1750		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:1750		 jp	 c, FDC_HANDLER_TAIL
 ROM:1753		 ld	 hl, 2048
 ROM:1756		 call	 FDC_sub_0360	 ; Called on sector/track read write. PORTB low	2 bits touched
 ROM:1759		 call	 FDC_READ_TRACK
@@ -5397,9 +5397,9 @@ ROM:1764 ; Attributes: bp-based	frame
 ROM:1764 
 ROM:1764 FDC_SUBHANDLER06_WRITE_TRACK:		 ; DATA	XREF: ROM:16E1o
 ROM:1764		 call	 FDC_COMMON_HANDLER ; Called at	the beginning of all floppy handlers
-ROM:1767		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:1767		 jp	 c, FDC_HANDLER_TAIL
 ROM:176A		 call	 FDC_SEEK_AND_LOAD_HEAD
-ROM:176D		 jp	 c, FDC_HANDLER_ERROR_TAIL
+ROM:176D		 jp	 c, FDC_HANDLER_TAIL
 ROM:1770		 ld	 hl, 2048
 ROM:1773		 call	 FDC_sub_0360	 ; Called on sector/track read write. PORTB low	2 bits touched
 ROM:1776		 call	 FDC_WRITE_TRACK
@@ -5423,7 +5423,7 @@ ROM:1781		 push	 af
 ROM:1782		 call	 CLOSE_BUS_WINDOW
 ROM:1785		 call	 ZERO_TO_SOME_VAR_sub_03AC
 ROM:1788		 pop	 af
-ROM:1789		 jp	 FDC_HANDLER_ERROR_TAIL
+ROM:1789		 jp	 FDC_HANDLER_TAIL
 ROM:1789 ; End of function FDC_ERROR_COMMON_sub_1781
 ROM:1789 
 ROM:178C 
@@ -5437,12 +5437,12 @@ ROM:178C					 ; FDC_SUBHANDLER01_SEEKp
 ROM:178C					 ; FDC_SUBHANDLER02_READ_SECTORp
 ROM:178C					 ; FDC_SUBHANDLER03_WRITE_SECTORp
 ROM:178C					 ; FDC_SUBHANDLER05_READ_TRACKp ...
-ROM:178C		 ld	 a, (byte_0_268E)
+ROM:178C		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:178F		 call	 FDC_NEVIEM_sub_03B6 ; A=param (2?)
 ROM:1792		 ld	 a, 80h	; 'Ç'
 ROM:1794		 ret	 c
 ROM:1795		 ld	 hl, FDC_byte_268B
-ROM:1798		 ld	 a, (byte_0_268E)
+ROM:1798		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:179B		 inc	 a
 ROM:179C		 cp	 (hl)
 ROM:179D		 jr	 z, loc_0_17C6
@@ -5467,7 +5467,7 @@ ROM:17C1		 call	 nz, CHECK_STUFF ; Called from *many* sites
 ROM:17C4		 jr	 nz, LOOP_AROUND_FOR_A_WHILE
 ROM:17C6 
 ROM:17C6 loc_0_17C6:				 ; CODE	XREF: FDC_COMMON_HANDLER+11j
-ROM:17C6		 ld	 a, (byte_0_2690)
+ROM:17C6		 ld	 a, (FDC_SUBC_SIDE)
 ROM:17C9		 and	 1
 ROM:17CB		 add	 a, a
 ROM:17CC		 ld	 b, a
@@ -5475,7 +5475,7 @@ ROM:17CD		 ld	 a, (FDC_COMMAND_BITS) ; Some bits to OR with command. (Seen 0x2 =
 ROM:17D0		 res	 1, a
 ROM:17D2		 or	 b
 ROM:17D3		 ld	 (FDC_COMMAND_BITS), a ; Some bits to OR with command. (Seen 0x2 = r1)
-ROM:17D6		 ld	 a, (byte_0_2690)
+ROM:17D6		 ld	 a, (FDC_SUBC_SIDE)
 ROM:17D9		 call	 FDC_SET_SIDE
 ROM:17DC		 ld	 a, 80h	; 'Ç'
 ROM:17DE		 ret	 c
@@ -5492,7 +5492,7 @@ ROM:17EE		 ld	 e, 0
 ROM:17F0		 call	 FDC_sub_04AA_FALLTHRU
 ROM:17F3		 push	 de		 ; de=FDC_IX_STRUCT
 ROM:17F4		 pop	 ix		 ; ix=FDC_IX_STRUCT
-ROM:17F6		 ld	 a, (byte_0_268E)
+ROM:17F6		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:17F9		 inc	 a
 ROM:17FA		 ld	 hl, FDC_byte_2687 ; Written on	error
 ROM:17FD		 and	 (hl)
@@ -5503,7 +5503,7 @@ ROM:1801		 ld	 (hl), a
 ROM:1802		 ld	 a, 8		 ; Restore (seek zero) with head load
 ROM:1804		 call	 FDC_RUN_CMD	 ; Write command read status (a=i/o value)
 ROM:1804					 ; Called on init
-ROM:1807		 ld	 a, (byte_0_268E)
+ROM:1807		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:180A		 ld	 hl, unk_0_267E
 ROM:180D		 call	 ADD_WORD16	 ; hl+=a
 ROM:1810		 xor	 a
@@ -5521,13 +5521,13 @@ ROM:1813					 ; FDC_SUBHANDLER02_READ_SECTOR+6p
 ROM:1813					 ; FDC_SUBHANDLER03_WRITE_SECTOR+6p
 ROM:1813					 ; FDC_SUBHANDLER05_READ_TRACK+6p
 ROM:1813					 ; FDC_SUBHANDLER06_WRITE_TRACK+6p
-ROM:1813		 ld	 a, (byte_0_268E)
+ROM:1813		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:1816		 ld	 hl, unk_0_267E
 ROM:1819		 call	 ADD_WORD16	 ; hl+=a
 ROM:181C		 ld	 a, (hl)
 ROM:181D		 call	 FDC_ADJUST_TRACK_NUM
 ROM:1820		 out	 (FDC_TRACK), a	 ; FDC - Track number
-ROM:1822		 ld	 a, (byte_0_268F)
+ROM:1822		 ld	 a, (FDC_SUBC_TRACK)
 ROM:1825		 ld	 (hl), a
 ROM:1826		 push	 af
 ROM:1827		 call	 FDC_ADJUST_TRACK_NUM
@@ -5568,9 +5568,9 @@ ROM:1845		 ld	 c, DMA_ALL	 ; DMA - All read and write registers
 ROM:1847		 otir	 
 ROM:1849		 ld	 a, 0
 ROM:184B		 call	 FDC_DMA_WHAT
-ROM:184E		 ld	 a, (byte_0_2690)
+ROM:184E		 ld	 a, (FDC_SUBC_SIDE)
 ROM:1851		 call	 FDC_SET_SIDE
-ROM:1854		 ld	 a, (byte_0_2691)
+ROM:1854		 ld	 a, (FDC_SUBC_SECTOR)
 ROM:1857		 out	 (FDC_SECTOR), a ; FDC - Sector	number
 ROM:1859		 ld	 a, 88h	; 'ê'    ; Read sector, sector size = 512
 ROM:185B		 call	 FDC_RUN_CMD_WITH_BITS ; Write command read status (a=i/o value)
@@ -5593,9 +5593,9 @@ ROM:186C		 ld	 c, DMA_ALL	 ; DMA - All read and write registers
 ROM:186E		 otir	 
 ROM:1870		 ld	 a, 0
 ROM:1872		 call	 FDC_DMA_WHAT
-ROM:1875		 ld	 a, (byte_0_2690)
+ROM:1875		 ld	 a, (FDC_SUBC_SIDE)
 ROM:1878		 call	 FDC_SET_SIDE
-ROM:187B		 ld	 a, (byte_0_2691)
+ROM:187B		 ld	 a, (FDC_SUBC_SECTOR)
 ROM:187E		 out	 (FDC_SECTOR), a ; FDC - Sector	number
 ROM:1880		 ld	 a, 0A8h ; '¿'   ; Write sector, sector size = 512
 ROM:1882		 call	 FDC_RUN_CMD_WITH_BITS ; Write command read status (a=i/o value)
@@ -5640,7 +5640,7 @@ ROM:189B ; Attributes: bp-based	frame
 ROM:189B 
 ROM:189B FDC_READ_LEN_AND_STH_FROM_BUF_sub_189B: ; CODE	XREF: FDC_WRITE_BUSp
 ROM:189B					 ; FDC_READ_BUSp
-ROM:189B		 ld	 hl, word_0_2692
+ROM:189B		 ld	 hl, FDC_SUBC_BUF_LO
 ROM:189E		 ld	 e, (hl)
 ROM:189F		 inc	 hl
 ROM:18A0		 ld	 d, (hl)
@@ -5721,7 +5721,7 @@ ROM:18F2
 ROM:18F2 ; Attributes: bp-based	frame
 ROM:18F2 
 ROM:18F2 orphan_sub_18F2:			 ; CODE	XREF: orphan_sub_18E4+3p
-ROM:18F2		 ld	 hl, word_0_2692
+ROM:18F2		 ld	 hl, FDC_SUBC_BUF_LO
 ROM:18F5		 push	 hl
 ROM:18F6		 ld	 e, (hl)
 ROM:18F7		 inc	 hl
@@ -5789,7 +5789,7 @@ ROM:1923
 ROM:1923 FDC_SECTOR_IO_ERROR:			 ; CODE	XREF: FDC_READ_SECTOR_DMA_sub_183D+23j
 ROM:1923					 ; FDC_WRITE_SECTOR_DMA_sub_1864+23j
 ROM:1923		 ld	 b, a
-ROM:1924		 ld	 a, (byte_0_268E)
+ROM:1924		 ld	 a, (FDC_SUBC_DRIVE_NUM)
 ROM:1927		 inc	 a
 ROM:1928		 ld	 hl, FDC_byte_2687 ; Written on	error
 ROM:192B		 or	 (hl)
@@ -5934,7 +5934,7 @@ ROM:19AA		 ld	 d, (hl)
 ROM:19AB		 inc	 hl
 ROM:19AC		 ld	 a, (hl)
 ROM:19AD		 ex	 de, hl
-ROM:19AE		 ld	 de, FDC_SUB_COMMAND_BUFFER
+ROM:19AE		 ld	 de, FDC_SUB_COMMAND_RETRY
 ROM:19B1		 ld	 bc, 9
 ROM:19B4		 ret	 
 ROM:19B4 ; End of function FDC_sub_1978
@@ -5987,8 +5987,8 @@ ROM:19DC					 ; 0x79	Group 0	Port B -> Port A
 ROM:19DF		 ld	 b, 5
 ROM:19E1		 ld	 c, DMA_ALL	 ; DMA - All read and write registers
 ROM:19E3		 otir	 
-ROM:19E5		 ld	 hl, (word_0_2692)
-ROM:19E8		 ld	 a, (byte_0_2694)
+ROM:19E5		 ld	 hl, (FDC_SUBC_BUF_LO)
+ROM:19E8		 ld	 a, (FDC_SUBC_BUF_HI)
 ROM:19EB		 push	 hl
 ROM:19EC		 push	 bc
 ROM:19ED		 call	 BUS_READ8	 ; hl=host address
@@ -6024,8 +6024,8 @@ ROM:1A08					 ; 0x79	Group 0	Port B -> Port A
 ROM:1A0B		 ld	 b, 5
 ROM:1A0D		 ld	 c, DMA_ALL	 ; DMA - All read and write registers
 ROM:1A0F		 otir	 
-ROM:1A11		 ld	 hl, (word_0_2692)
-ROM:1A14		 ld	 a, (byte_0_2694)
+ROM:1A11		 ld	 hl, (FDC_SUBC_BUF_LO)
+ROM:1A14		 ld	 a, (FDC_SUBC_BUF_HI)
 ROM:1A17		 push	 hl
 ROM:1A18		 call	 OPEN_BUS_WINDOW ; Set 0x8000 window to	access A:HL bus	address
 ROM:1A1B		 pop	 hl
@@ -7824,12 +7824,12 @@ RAM:267E					 ; FDC_COMMON_HANDLER+7Eo
 RAM:267E					 ; FDC_SEEK_AND_LOAD_HEAD+3o
 RAM:267F		 .block	1
 RAM:2680*FDC_HANDLER_ADDRESS:.block 2		 ; DATA	XREF: FDC_PICK_HANDLER_FROM_VECTOR+22w
-RAM:2680*					 ; FDC_HANDLER_ERROR_TAIL+12r
+RAM:2680*					 ; FDC_HANDLER_TAIL+12r
 RAM:2680*					 ; Handler address
 RAM:2682*FDC_SUBCOMMAND: .block	1		 ; DATA	XREF: FDC_PICK_HANDLER_FROM_VECTOR+Bw
-RAM:2682*					 ; FDC_HANDLER_ERROR_TAIL+4r
+RAM:2682*					 ; FDC_HANDLER_TAIL+4r
 RAM:2683*FDC_ZERO:	 .block	1		 ; DATA	XREF: FDC_PICK_HANDLER_FROM_VECTOR+Fw
-RAM:2683*					 ; FDC_HANDLER_ERROR_TAIL+1o
+RAM:2683*					 ; FDC_HANDLER_TAIL+1o
 RAM:2684 FDC_SOME_BUS_BUF3:.block 3		 ; DATA	XREF: FDC_sub_1978+24o
 RAM:2684					 ; FDC_sub_1978+2Do
 RAM:2687*FDC_byte_2687:	 .block	1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+6w
@@ -7847,27 +7847,31 @@ RAM:2689*					 ; HANDLER08_FDC_sub_1547+40r
 RAM:268B*FDC_byte_268B:	 .block	1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+1Bw
 RAM:268B*					 ; HANDLER08_FDC_sub_1547+53w
 RAM:268B*					 ; FDC_COMMON_HANDLER+9o
-RAM:268C FDC_SUB_COMMAND_BUFFER:.block 1	 ; DATA	XREF: FDC_PICK_HANDLER_FROM_VECTORr
+RAM:268C --------------------------------------
+RAM:268C Floppy	subcommand buffer (queue entry)
+RAM:268C FDC_SUB_COMMAND_RETRY:.block 1		 ; DATA	XREF: FDC_PICK_HANDLER_FROM_VECTORr
 RAM:268C					 ; FDC_sub_1978+36o
-RAM:268D*byte_0_268D:	 .block	1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+136w
-RAM:268E byte_0_268E:	 .block	1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+68r
+RAM:268D*FDC_SUBC_STATUS:.block	1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+136w
+RAM:268E FDC_SUBC_DRIVE_NUM:.block 1		 ; DATA	XREF: HANDLER08_FDC_sub_1547+68r
 RAM:268E					 ; FDC_COMMON_HANDLERr
 RAM:268E					 ; FDC_COMMON_HANDLER+Cr
 RAM:268E					 ; FDC_COMMON_HANDLER+6Ar
 RAM:268E					 ; FDC_COMMON_HANDLER+7Br ...
-RAM:268F byte_0_268F:	 .block	1		 ; DATA	XREF: FDC_SEEK_AND_LOAD_HEAD+Fr
-RAM:2690 byte_0_2690:	 .block	1		 ; DATA	XREF: FDC_COMMON_HANDLER+3Ar
+RAM:268F FDC_SUBC_TRACK: .block	1		 ; DATA	XREF: FDC_SEEK_AND_LOAD_HEAD+Fr
+RAM:2690 FDC_SUBC_SIDE:	 .block	1		 ; DATA	XREF: FDC_COMMON_HANDLER+3Ar
 RAM:2690					 ; FDC_COMMON_HANDLER+4Ar
 RAM:2690					 ; FDC_READ_SECTOR_DMA_sub_183D+11r
 RAM:2690					 ; FDC_WRITE_SECTOR_DMA_sub_1864+11r
-RAM:2691 byte_0_2691:	 .block	1		 ; DATA	XREF: FDC_READ_SECTOR_DMA_sub_183D+17r
+RAM:2691 FDC_SUBC_SECTOR:.block	1		 ; DATA	XREF: FDC_READ_SECTOR_DMA_sub_183D+17r
 RAM:2691					 ; FDC_WRITE_SECTOR_DMA_sub_1864+17r
-RAM:2692 word_0_2692:	 .block	2		 ; DATA	XREF: FDC_READ_LEN_AND_STH_FROM_BUF_sub_189Bo
+RAM:2692 FDC_SUBC_BUF_LO:.block	2		 ; DATA	XREF: FDC_READ_LEN_AND_STH_FROM_BUF_sub_189Bo
 RAM:2692					 ; orphan_sub_18F2o
 RAM:2692					 ; FDC_DMA_READ_TRACK+9r
 RAM:2692					 ; FDC_DMA_WRITE_TRACK+9r
-RAM:2694 byte_0_2694:	 .block	1		 ; DATA	XREF: FDC_DMA_READ_TRACK+Cr
+RAM:2694 FDC_SUBC_BUF_HI:.block	1		 ; DATA	XREF: FDC_DMA_READ_TRACK+Cr
 RAM:2694					 ; FDC_DMA_WRITE_TRACK+Cr
+RAM:2694 --------------------------------------
+RAM:2694 
 RAM:2695		 .block	1
 RAM:2696*ADDRESS_LATCH_SET_VALUE:.block	1	 ; DATA	XREF: SET_BUS_ADDRESS_LATCH+Cw
 RAM:2697 LAST_CMD_COUNTER:.block 1		 ; DATA	XREF: HANDLER00_sub_1A3D+Bo
