@@ -1009,25 +1009,30 @@ DISK_BOOT:
 		mov	bp, sp
 		push	di
 		push	si
-		sub	sp, 0Ah
+		sub	sp, 0Ah ; alloca
+
 		cmp	word [bp+DISK_NUMBER], 3
-		jbe	short FLOPPY_DISK
+		jbe	short USE_FLOPPY_CODE
 		mov	dx, 1
-		jmp	short HARD_DISK
-FLOPPY_DISK:
+		jmp	short GOT_DISK_CODE
+USE_FLOPPY_CODE:
 		mov	dx, 2
-HARD_DISK:
+GOT_DISK_CODE:
 		mov	[BOOT_DISK_CODE], dl ; 1 = HDD, 2 = FDD
+
 		mov	dx, word [bp+DISK_NUMBER]
 		mov	[DISK_IOPB+IOPB.DISK_DRIVE_NUM], dl
+
 		cmp	word [bp+DISK_NUMBER], 3
-		jbe	short loc_FE5BC
-		mov	dx, 21h
-		jmp	short loc_FE5BF
-loc_FE5BC:
-		mov	dx, 20h
-loc_FE5BF:
+		jbe	short USE_FLOPPY_OP
+		mov	dx, 21h ; Use 21h (Read) for hard drive.
+		jmp	short GOT_OPCODE
+USE_FLOPPY_OP:
+		mov	dx, 20h	; Use 20h (Read) for Floppy. Why though?
+				; FDC_READ strips the bottom nibble off anyway
+GOT_OPCODE:
 		mov	byte [DISK_IOPB+IOPB.DISK_OPCODE], dl
+
 		mov	word [DISK_IOPB+IOPB.DISK_TRACK], 0
 		mov	byte [DISK_IOPB+IOPB.DISK_HEAD], 0
 		cmp	word [bp+DISK_NUMBER], 3
