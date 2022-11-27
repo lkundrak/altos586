@@ -5,7 +5,7 @@
 .(l C
 .b "Notes on the Altos 586 Computer"
 .sp  2
-Work in progress, Jule 2022
+Work in progress, November 2022
 by Lubomir Rintel
 .)l
 .sp  2
@@ -100,7 +100,7 @@ Some of the FDC lines involved in the Floppy Drive access are connected to
 the PIO. In particular, the
 .i #DDEN
 pin needs to be set low in order to read double-density (MFM) disks, which is
-almost certainly the case.  The 
+almost certainly the case.  The
 .i INTRQ
 pin is connected to PIO's
 .i PA7
@@ -229,7 +229,7 @@ GND      |   1 |   2 | Output    | Motor Enable     |
 The firmware interface is unsurprisingly very similar to 586T. A notable
 difference is addition of the Floppy Channel, described below.
 
-The 
+The
 .i "586T/986T System Reference Manual"
 is not too clear about the
 offset of various register blocks though they can be for the most
@@ -342,7 +342,7 @@ The
 command submits the
 .i "Floppy Command Queue"
 for processing. Said queue is in fact a ring buffer whose entries
-are the addresses of 
+are the addresses of
 .i "Floppy Disk Interface Parameter Block"
 structures (described below).
 
@@ -582,11 +582,11 @@ the beginning (though, as stated above, this is not really necessary):
 .br
 Break ....
 .br
-CS:IP FC00:0000  Flags  - - - - S - - - - 
+CS:IP FC00:0000  Flags  - - - - S - - - -
 .br
-  AX    BX    CX    DX    SI    DI    DS    ES    SS    SP    BP    
+  AX    BX    CX    DX    SI    DI    DS    ES    SS    SP    BP
 .br
-  0000  0000  0000  0000  0000  0000  0000  0000  0000  0FFC  0000  
+  0000  0000  0000  0000  0000  0000  0000  0000  0000  0FFC  0000
 .ft R
 
 Let's enter some actual floppy I/O requests now.
@@ -726,11 +726,11 @@ Now invoke the queue the same way as we set the parameters:
 .br
 Break ....
 .br
-CS:IP FC00:0008  Flags  - - - - S - A - - 
+CS:IP FC00:0008  Flags  - - - - S - A - -
 .br
-  AX    BX    CX    DX    SI    DI    DS    ES    SS    SP    BP    
+  AX    BX    CX    DX    SI    DI    DS    ES    SS    SP    BP
 .br
-  0000  0000  0000  0000  0000  0000  0000  0000  0000  0FF8  0000  
+  0000  0000  0000  0000  0000  0000  0000  0000  0000  0FF8  0000
 .ft R
 
 The command is in. Let's keep checking the status byte until it indicates
@@ -771,17 +771,87 @@ The sector data is now at 2500h, let's check it out:
 .bp
 .sh 2 "Z80 ROM Monitor"
 
-The factory firmware seems to include a ROM Monitor software.
-Having a firmware monitor is very helpful for investigation of
-the system. It would allow controlling the Z80 peripherals
-directly and operating them without the main 8086 processor.
+The factory firmware on the IP seems to include some sort of debug monitor
+capability.
 
-Unfortunately, I didn't discover a way to enter the factory
-ROM monitor. I've ended up temporarily replacing the ROM
-with a different one, allowing me to poke around the controller.
-That way I've lost the way of utilizing the factory firmware
-on the main processor, which would just end up being stuck
-in a tight loop.
+Having a firmware monitor is very helpful for investigation of the system.
+It would allow controlling the Z80 peripherals directly and operating them
+without the main 8086 processor.
+
+Unfortunately, I didn't discover a way to enter the factory ROM monitor.
+I've ended up temporarily replacing the ROM with a different one, allowing
+me to poke around the controller (whilst the main processor is just stuck
+in an endless loop).
+
+.sh 3 "Custom ROM Monitor"
+
+My monitor program is a slight modification\** of a Z80 monitor made by
+MCook for the ZMC80 computer and adjusted for MPF-1 by F.J.Kraan.
+It is free software (MIT licensed) and fits the purpose perfectly.
+.(f
+\**
+Source code and a binary image are available at
+.i https://github.com/lkundrak/Z80SerialMonitor-586/
+.)f
+
+The following capture of the ROM monitor output provides some insight into
+what functionality the monitor provides:
+
+.ft CW
+Altos 586 IOP Debug Monitor 0.7
+.br
+<https://github.com/lkundrak/altos586/>
+.br
+2015 MCook, 2022 F.J.Kraan, 2022 Lubomir Rintel
+.br
+
+.br
+         Input ? for command list
+.br
+>\f[CB]?\f[]
+.br
+ZMC80 Monitor Command List
+.br
+? - view command list
+.br
+C - clear screen
+.br
+D - print 100h bytes from specified location
+.br
+E - edit bytes in memory
+.br
+F - fill memory range with value
+.br
+G - jump to memory value
+.br
+K - call to memory value
+.br
+M - copy bytes in memory
+.br
+P - print port scan (00-FF)
+.br
+R - monitor reset
+.br
+S - calculate checksum for memory range
+.br
+Z - dump user registers (STEP)
+.br
+I - read I/O port
+.br
+O - write I/O port
+.br
+: - download intel hex
+.br
++ - print next block of memory
+.br
+- - print previous block of memory
+.br
+
+.br
+>
+.ft R
+
+
 
 .bp
 .sh 1 "Hard Drive Controller Board"
@@ -812,7 +882,7 @@ on the hard drive board to service the I/O operations.
 It is controlled by the I/O parameter block structure to ultimately
 transfer data between a main memory buffer and the hard drive.
 The data is not transferred directly between the controller's data
-port and the main memory. Instead, the data is bounced through a 
+port and the main memory. Instead, the data is bounced through a
 a buffer in controller board's SRAM.
 
 This utilizes the main memory bus more efficiently.
