@@ -269,7 +269,7 @@ iopattn(x86emu_t *emu)
 	//unsigned ptr = 0xffff6;
 
 	scb = x86emu_read_word(emu, 0xffffa) << 4;
-	scb |= x86emu_read_word(emu, 0xffff8);
+	scb += x86emu_read_word(emu, 0xffff8);
 	xprintf ("==== IO ATTENTION 8089 ==== Bus width = 0x%02x\n", x86emu_read_byte(emu, 0xffff6));
 
 	xprintf ("SCB = 0x%04x (%04x:%04x)\n", scb,
@@ -278,7 +278,7 @@ iopattn(x86emu_t *emu)
 	xprintf ("\n");
 
 	cb = x86emu_read_word(emu, scb + 4) << 4;
-	cb |= x86emu_read_word(emu, scb + 2);
+	cb += x86emu_read_word(emu, scb + 2);
 	xprintf ("SCB.SOC = 0x%02x\n", x86emu_read_byte(emu, scb));
 	xprintf ("SCB.CB = 0x%04x (%04x:%04x)\n", cb,
 		x86emu_read_word(emu, scb + 4),
@@ -427,7 +427,7 @@ cpuint1_hdd(x86emu_t *emu)
 	count = x86emu_read_byte(emu, ptr + 5);
 
 	data = x86emu_read_word(emu, ptr + 11) << 4;
-	data |= x86emu_read_word(emu, ptr + 9);
+	data += x86emu_read_word(emu, ptr + 9);
 
 
 	xprintf ("   0 0x%04x   0x%02x COMMAND\n", ptr + 0, x86emu_read_byte(emu, ptr + 0));
@@ -483,7 +483,7 @@ cpuint2_floppy(x86emu_t *emu)
 	unsigned track, head, start, end, secsize;
 
 	ptr = x86emu_read_word(emu, 0x406) << 4;
-	ptr |= x86emu_read_word(emu, 0x404);
+	ptr += x86emu_read_word(emu, 0x404);
 
 	cmd = x86emu_read_byte(emu, ptr + 0);
 
@@ -494,7 +494,7 @@ cpuint2_floppy(x86emu_t *emu)
 	end = x86emu_read_byte(emu, ptr + 6);
 
 	data = x86emu_read_word(emu, ptr + 11) << 4;
-	data |= x86emu_read_word(emu, ptr + 9);
+	data += x86emu_read_word(emu, ptr + 9);
 
 	xprintf("============== CPUINT2 FLOPPY =========\n");
 	xprintf ("   0 0x%04x 0x%02x COMMAND\n", ptr + 0, x86emu_read_byte(emu, ptr + 0));
