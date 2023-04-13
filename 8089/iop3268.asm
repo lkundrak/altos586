@@ -1,69 +1,187 @@
-3268: 51 30 d0 ff               movi    gc,0ffd0h
-326c: aa bb 04 20               jnbt    [pp].4h,5,x3290
-3270: 0a 4e 06 80               movbi   [gc].6h,80h
-3274: 02 93 08 02 ce 02         movb    [gc].2h,[pp].8h
-327a: ea ba 06 fc       x327a:  jnbt    [gc].6h,7,x327a
-327e: 0a 4e 06 20               movbi   [gc].6h,20h
-3282: 13 4f 14 00 00            movi    [pp].14h,0h
-3287: 0a be 06 fc       x3287:  jbt     [gc].6h,0,x3287
-328b: 12 ba 04 e2 00            ljnbt   [gc].4h,0,x3372
-3290: 0a cb 04 0f       x3290:  andbi   [pp].4h,0fh
-3294: 12 e7 04 b1 00            ljzb    [pp].4h,x334a
-3299: 02 93 08 02 ce 02         movb    [gc].2h,[pp].8h
-329f: ea ba 06 fc       x329f:  jnbt    [gc].6h,7,x329f
-32a3: 02 93 14 00 ce            movb    [gc],[pp].14h
-32a8: 02 93 15 00 ce            movb    [gc],[pp].15h
-32ad: 02 93 06 02 ce 04         movb    [gc].4h,[pp].6h
-32b3: 02 93 07 02 ce 04         movb    [gc].4h,[pp].7h
-32b9: 0a 4e 06 10               movbi   [gc].6h,10h
-32bd: 03 93 06 03 cf 14         mov     [pp].14h,[pp].6h
-32c3: 0a be 06 fc       x32c3:  jbt     [gc].6h,0,x32c3
-32c7: 2a ba 04 fc       x32c7:  jnbt    [gc].4h,1,x32c7
-32cb: 0a e7 10 7b               jzb     [pp].10h,x334a
-32cf: 0a bf 04 0e               jbt     [pp].4h,0,x32e1
-32d3: 03 8b 0c                  lpd     ga,[pp].0ch
-32d6: 31 30 00 00               movi    gb,0h
-32da: 63 83 0a                  mov     bc,[pp].0ah
-32dd: 8b 9f 16 70               call    [pp].16h,x3351
-32e1: 31 30 00 00       x32e1:  movi    gb,0h
-32e5: f1 30 80 fe               movi    mc,0fe80h
-32e9: 11 30 d0 ff               movi    ga,0ffd0h
-32ed: 13 4f 12 00 02            movi    [pp].12h,200h
-32f2: 0a bb 04 12               jnbt    [pp].4h,0,x3308
-32f6: d1 30 28 8a               movi    cc,8a28h
-32fa: a0 00                     wid     8,16
-32fc: 6a bb 04 17               jnbt    [pp].4h,3,x3317
-3300: 13 4f 12 05 02            movi    [pp].12h,205h
-3305: 88 20 0f                  jmp     x3317
-3308: d1 30 28 56       x3308:  movi    cc,5628h
-330c: c0 00                     wid     16,8
-330e: 4a bb 04 05               jnbt    [pp].4h,2,x3317
-3312: 13 4f 12 04 00            movi    [pp].12h,4h
-3317: 63 83 12          x3317:  mov     bc,[pp].12h
-331a: 02 93 09 00 ce            movb    [gc],[pp].9h
-331f: 60 00                     xfer    
-3321: 02 93 04 02 ce 06         movb    [gc].6h,[pp].4h
-3327: 0a b6 06 33               jmcne   [gc].6h,x335e
-332b: 02 ef 10                  decb    [pp].10h
-332e: 0a e7 10 06               jzb     [pp].10h,x3338
-3332: 02 eb 09                  incb    [pp].9h
-3335: 88 20 df                  jmp     x3317
-3338: 0a bb 04 0e       x3338:  jnbt    [pp].4h,0,x334a
-333c: 23 8b 0c                  lpd     gb,[pp].0ch
-333f: 11 30 00 00               movi    ga,0h
-3343: 63 83 0a                  mov     bc,[pp].0ah
-3346: 8b 9f 16 07               call    [pp].16h,x3351
-334a: 0a 4f 05 00       x334a:  movbi   [pp].5h,0h
-334e: 88 20 26                  jmp     x3377
-3351: e0 00             x3351:  wid     16,16
-3353: d1 30 08 c2               movi    cc,0c208h
-3357: 60 00                     xfer    
-3359: 00 00                     nop     
-335b: 83 8f 16                  movp    tp,[pp].16h
-335e: 02 92 06 02 cf 05 x335e:  movb    [pp].5h,[gc].6h
-3364: 0a cb 05 7e               andbi   [pp].5h,7eh
-3368: e2 f7 05                  setb    [pp].5h,7
-336b: 0a 4e 06 00               movbi   [gc].6h,0h
-336f: 88 20 05                  jmp     x3377
-3372: 13 4f 05 81 00    x3372:  movi    [pp].5h,81h
-3377: 40 00             x3377:  sintr   
+;------------------------------------------------------------------------
+; Program parameters, passed by the user.				:
+;------------------------------------------------------------------------
+
+IOPB		STRUC
+		DS 4	; Task Block pointer
+IOPB_OP:	DS 1
+IOPB_STATUS:	DS 1
+IOPB_CYL:	DS 2
+IOPB_DRV_HD:	DS 1
+IOPB_SEC:	DS 1	; Starting sector
+IOPB_BYTE_CNT:	DS 2	; The DMA buffer size
+IOPB_DMA_BUF:	DS 4	; The DMA buffer address
+IOPB_SEC_CNT:	DS 2	; Number of sectors
+			; The following members are reserved for use by the IOP.
+IOPB_IO_SIZE:	DS 2	; Written by the IOP
+IOPB_LAST_CYL:	DS 2	; Last cylinder we've seeked to
+IOPB_LINK_REG:	DS 2	; Return address of subroutine calls
+IOPB		ENDS
+
+;------------------------------------------------------------------------
+; Bits of IOPB_OP.							:
+;------------------------------------------------------------------------
+
+OP_BIT_RD	EQU 0	; Read (0) or write (1)
+OP_BIT_FORMAT	EQU 2
+OP_BIT_ECC	EQU 3	; Include the ECC bits on read
+OP_BIT_SEL	EQU 5	; Drive/Head has changed
+OP_CMD_BITS	EQU 0FH
+
+;------------------------------------------------------------------------
+; Bits of IOPB_STATUS.							:
+;------------------------------------------------------------------------
+
+STATUS_BIT_ERR	EQU 7
+
+;------------------------------------------------------------------------
+; These are addresses in 8089's I/O space.				:
+;------------------------------------------------------------------------
+
+HDD_SRAM_ADDR	EQU 00000H
+HDD_REGS_ADDR	EQU 0FFD0H
+
+;------------------------------------------------------------------------
+; Registers at HDD_REGS_ADDR.						:
+;------------------------------------------------------------------------
+
+PORT_DATA	EQU 00H
+PORT_DRV_HD	EQU 02H
+PORT_04H	EQU 04H
+PORT_CMD_STAT	EQU 06H
+
+;;.bp
+;------------------------------------------------------------------------
+; The entry point.                                                      :
+;------------------------------------------------------------------------
+
+ENTRY:		movi  gc,HDD_REGS_ADDR
+
+		; Is bit 5 set?
+		jnbt  [pp].IOPB_OP,OP_BIT_SEL,NO_SEL
+
+		; If bit 5 is set, then drive and head might have
+		; Changed and we need ensure correct head is selected.
+		movbi [gc].PORT_CMD_STAT,80H
+		movb  [gc].PORT_DRV_HD,[pp].IOPB_DRV_HD
+B0:		jnbt  [gc].PORT_CMD_STAT,7,B0
+
+		movbi [gc].PORT_CMD_STAT,20H
+		movi  [pp].IOPB_LAST_CYL,0
+C0:		jbt   [gc].PORT_CMD_STAT,0,C0
+
+		ljnbt [gc].PORT_04H,0,RETURN_81H ; Error?
+
+NO_SEL:		andbi [pp].IOPB_OP,OP_CMD_BITS ; Command bits mask
+		ljzb  [pp].IOPB_OP,RETURN_00H ; Command is zero
+
+		; Select head
+		movb  [gc].PORT_DRV_HD,[pp].IOPB_DRV_HD
+B1:		jnbt  [gc].PORT_CMD_STAT,7,B1
+
+		; Seek to cylinder
+		movb  [gc],[pp].IOPB_LAST_CYL ; [gc].PORT_DATA
+		movb  [gc],[pp].IOPB_LAST_CYL+1 ; [gc].PORT_DATA
+		movb  [gc].PORT_04H,[pp].IOPB_CYL
+		movb  [gc].PORT_04H,[pp].IOPB_CYL+1
+		movbi [gc].PORT_CMD_STAT,10H
+		mov   [pp].IOPB_LAST_CYL,[pp].IOPB_CYL
+C1:		jbt   [gc].PORT_CMD_STAT,0,C1
+D0:		jnbt  [gc].PORT_04H,1,D0
+
+		; Zero sectors? Nothing to do.
+		jzb   [pp].IOPB_SEC_CNT,RETURN_00H
+
+		; A read?
+		jbt   [pp].IOPB_OP,OP_BIT_RD,HDD_SRAM_XFER
+
+		; Whis is a write. Transfer the data from main memory
+		; DMA buffer to controller board SRAM first
+		lpd   ga,[pp].IOPB_DMA_BUF
+		movi  gb,PORT_DATA
+		mov   bc,[pp].IOPB_BYTE_CNT
+		call  [pp].IOPB_LINK_REG,MEM_SRAM_XFER
+
+;;.bp
+;------------------------------------------------------------------------
+; Transfer between SRAM and the HDD's data register.			:
+; Common to read and write.						:
+;------------------------------------------------------------------------
+
+HDD_SRAM_XFER:	movi  gb,HDD_SRAM_ADDR
+		movi  mc,0FE80H ; Why?
+		movi  ga,HDD_REGS_ADDR+PORT_DATA
+		movi  [pp].IOPB_IO_SIZE,512
+
+		; A read or write?
+		jnbt  [pp].IOPB_OP,OP_BIT_RD,XFER_WR
+		movi  cc,8A28H ; A read. Setup for SRAM to HDD transfer.
+		wid   8,16
+
+		; Add 5 bytes if ECC requested.
+		jnbt  [pp].IOPB_OP,OP_BIT_ECC,XFER_SEC
+		movi  [pp].IOPB_IO_SIZE,512+5
+		jmp   XFER_SEC
+
+		; A write. Setup for transfer from SRAM to HDD.
+XFER_WR:	movi  cc,5628H
+		wid   16,8
+		jnbt  [pp].IOPB_OP,OP_BIT_FORMAT,XFER_SEC
+		movi  [pp].IOPB_IO_SIZE,4 ; Sector header
+
+		; Transfer one sector
+XFER_SEC:	mov   bc,[pp].IOPB_IO_SIZE
+		movb  [gc],[pp].IOPB_SEC ; [gc].PORT_DATA
+		xfer
+
+		; Check for errors
+		movb  [gc].PORT_CMD_STAT,[pp].IOPB_OP
+		jmcne [gc].PORT_CMD_STAT,RETURN_ERR
+
+		; Are we done or there's more?
+		decb  [pp].IOPB_SEC_CNT
+		jzb   [pp].IOPB_SEC_CNT,XFER_DONE
+		incb  [pp].IOPB_SEC ; There's more.
+		jmp   XFER_SEC
+
+		; HDD - SRAM transfer done. We're done if it was a write.
+XFER_DONE:	jnbt  [pp].IOPB_OP,OP_BIT_RD,RETURN_00H
+
+		; This was a read. We need to transfer from SRAM to DMA buffer.
+		lpd   gb,[pp].IOPB_DMA_BUF
+		movi  ga,PORT_DATA
+		mov   bc,[pp].IOPB_BYTE_CNT
+		call  [pp].IOPB_LINK_REG,MEM_SRAM_XFER
+
+		; Successful return.
+RETURN_00H:	movbi [pp].IOPB_STATUS,0
+		jmp   DONE
+
+;------------------------------------------------------------------------
+; A subroutine that does a memory-to memory transfer.			:
+; Used to copy data between the controller SRAM and the DMA buffer in	:
+; main memory, in either direction.					:
+;------------------------------------------------------------------------
+
+MEM_SRAM_XFER:	wid   16,16
+		movi  cc,0C208H
+		xfer
+		nop
+		movp  tp,[pp].IOPB_LINK_REG
+
+;------------------------------------------------------------------------
+; Error return. Communicate the error from the status.			:
+; register to the IOPB.							:
+;------------------------------------------------------------------------
+
+RETURN_ERR:	movb  [pp].IOPB_STATUS,[gc].PORT_CMD_STAT
+		andbi [pp].IOPB_STATUS,7EH
+		setb  [pp].IOPB_STATUS,STATUS_BIT_ERR
+		movbi [gc].PORT_CMD_STAT,00H
+		jmp   DONE
+
+		; Error 1.
+RETURN_81H:	movi  [pp].IOPB_STATUS,(1<<STATUS_BIT_ERR)+1
+
+DONE:		sintr
+		hlt
