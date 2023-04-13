@@ -1,0 +1,839 @@
+.ft CW
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]These are addresses in 8089's I/O space.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]HDD_SRAM_ADDR\f[]   EQU 00000H
+.br
+\f[CB]LOADER_OFFSET\f[]   EQU 00400H
+.br
+\f[CB]HDD_REGS_ADDR\f[]   EQU 0FFD0H
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Registers at HDD_REGS_ADDR.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]REG_DATA\f[]        EQU 00H
+.br
+\f[CB]REG_DRV_HD\f[]      EQU 02H
+.br
+\f[CB]REG_CYL_SK\f[]      EQU 04H \f[I]; Write cylinder, read seek status\f[]
+.br
+\f[CB]REG_CMD_STAT\f[]    EQU 06H \f[I]; Write command, read op status\f[]
+.br
+\f[CB]REG_28H\f[]         EQU 28H
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Parameter Block\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]PB\f[]              STRUC
+.br
+\f[CB]PB_TB\f[]:          DS 4
+.br
+\f[CB]PB_IN1_ADDR\f[]:    DS 4    \f[I]; Offset:Segment of first command block\f[]
+.br
+\f[CB]PB_IN2_ADDR\f[]:    DS 4    \f[I]; Offset:Segment of second command block\f[]
+.br
+\f[CB]PB_OUT1_ADDR\f[]:   DS 4    \f[I]; Offset:Segment of first result block\f[]
+.br
+\f[CB]PB_OUT2_ADDR\f[]:   DS 4    \f[I]; Offset:Segment of second result block\f[]
+.br
+\f[CB]PB\f[]              ENDS
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Command Block.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]CB\f[]              STRUC
+.br
+\f[CB]CB_OP\f[]:          DS 1
+.br
+\f[CB]CB_STAT\f[]:        DS 1
+.br
+\f[CB]CB_CYL_LO\f[]:      DS 1
+.br
+\f[CB]CB_CYL\f[]          EQU \f[CB]CB_CYL_LO\f[]
+.br
+\f[CB]CB_CYL_HI\f[]:      DS 1
+.br
+\f[CB]CB_DRV_HD\f[]:      DS 1
+.br
+\f[CB]CB_SEC\f[]:         DS 1
+.br
+\f[CB]CB_LEN\f[]:         DS 2
+.br
+\f[CB]CB_BUF_ADDR\f[]:    DS 4
+.br
+\f[CB]CB_REG_28H\f[]:     DS 1
+.br
+\f[CB]CB_NUM_SECS\f[]:    DS 1
+.br
+\f[CB]CB_RETRIES\f[]:     DS 1
+.br
+                DS 1
+.br
+\f[CB]CB_SIZE\f[]:
+.br
+\f[CB]CB\f[]              ENDS
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Value following the Command Block in the Working Area.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]WA\f[]              STRUC
+.br
+                DS \f[CB]CB_SIZE\f[]
+.br
+\f[CB]WA_CUR_CYL\f[]:     DS 2
+.br
+\f[CB]WA_CB_ADDR\f[]:     DS 4    \f[I]; Original address of this CB\f[]
+.br
+\f[CB]WA_LINK\f[]:        DS 4
+.br
+\f[CB]WA_LINK1\f[]:       DS 4
+.br
+\f[CB]WA_XFER_LEN\f[]:    DS 2
+.br
+\f[CB]WA_TMP_CMD\f[]:     DS 1
+.br
+\f[CB]WA_CUR_DRV_HD\f[]:  DS 1
+.br
+\f[CB]WA_LINK2\f[]:       DS 4
+.br
+\f[CB]WA_ERR_TRIES\f[]:   DS 1
+.br
+\f[CB]WA_ERR_SEC\f[]:     DS 1
+.br
+\f[CB]WA_SIZE\f[]:
+.br
+\f[CB]WA\f[]              ENDS
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Bits of CB_OP.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]OP_BIT_RD\f[]       EQU 0   \f[I]; Read (0) or write (1)\f[]
+.br
+\f[CB]OP_BIT_FMT\f[]      EQU 2   \f[I]; Format\f[]
+.br
+\f[CB]OP_BIT_ECC\f[]      EQU 3   \f[I]; Include the ECC bits on read\f[]
+.br
+\f[CB]OP_BIT_SEL\f[]      EQU 5   \f[I]; Drive/Head has changed\f[]
+.br
+\f[CB]OP_BIT_UNK6\f[]     EQU 6
+.br
+\f[CB]OP_BIT_UNK7\f[]     EQU 7
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]The entry point.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]CODE\f[]:
+.br
+                lpd     ga,[pp].\f[CB]PB_IN1_ADDR\f[]
+.br
+                jzb     [ga].\f[CB]CB_OP\f[],\f[CB]CH1_CHECKED\f[]
+.br
+                movi    gb,\f[CB]WA1\f[]
+.br
+                movi    gc,\f[CB]WA1\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+\f[CB]CH1_CHECKED\f[]:
+.br
+
+.br
+                lpd     ga,[pp].\f[CB]PB_IN2_ADDR\f[]
+.br
+                jzb     [ga].\f[CB]CB_OP\f[],\f[CB]CH2_CHECKED\f[]
+.br
+                movi    gb,\f[CB]WA2\f[]
+.br
+                movi    gc,\f[CB]WA2\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+\f[CB]CH2_CHECKED\f[]:
+.br
+
+.br
+                movi    ga,\f[CB]HDD_REGS_ADDR\f[]
+.br
+
+.br
+                movi    gc,\f[CB]WA1\f[]
+.br
+                jzb     [gc].\f[CB]CB_OP\f[],\f[CB]CH1_SEEKED\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]SET_TRACK\f[]
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]SEEK_CH1\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEL_DRIVE\f[]
+.br
+                jmp     \f[CB]CH1_SEEKED\f[]
+.br
+\f[CB]SEEK_CH1\f[]:       lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEEK_TO_CYL\f[]
+.br
+\f[CB]CH1_SEEKED\f[]:
+.br
+
+.br
+                movi    gc,\f[CB]WA2\f[]
+.br
+                jzb     [gc].\f[CB]CB_OP\f[],\f[CB]CH2_SEEKED\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]SET_TRACK\f[]
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]SEEK_CH2\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEL_DRIVE\f[]
+.br
+                jmp     \f[CB]CH2_SEEKED\f[]
+.br
+\f[CB]SEEK_CH2\f[]:       lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEEK_TO_CYL\f[]
+.br
+\f[CB]CH2_SEEKED\f[]:
+.br
+
+.br
+                movi    gc,\f[CB]WA1\f[]
+.br
+                jzb     [gc].\f[CB]CB_OP\f[],\f[CB]CH1_DONE\f[]
+.br
+                jbt     [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]CH1_OP_DONE\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]SET_TRACK\f[]
+.br
+                jbt     [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]CH1_WAIT_SEEK\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_FROM_DMA\f[]
+.br
+\f[CB]CH1_WAIT_SEEK\f[]:  jnbt    [ga].\f[CB]REG_CYL_SK\f[],1,\f[CB]CH1_WAIT_SEEK\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK2\f[],\f[CB]DO_DISK_CMD\f[]
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]CH1_OP_DONE\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_TO_DMA\f[]
+.br
+\f[CB]CH1_OP_DONE\f[]:    movi    ga,\f[CB]WA1\f[]
+.br
+                lpd     gb,[pp].\f[CB]PB_OUT1_ADDR\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+\f[CB]CH1_DONE\f[]:
+.br
+
+.br
+                movi    gc,\f[CB]WA2\f[]
+.br
+                jzb     [gc].\f[CB]CB_OP\f[],\f[CB]CH2_DONE\f[]
+.br
+                jbt     [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]CH2_OP_DONE\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]SET_TRACK\f[]
+.br
+                jbt     [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]CH2_WAIT_SEEK\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_FROM_DMA\f[]
+.br
+\f[CB]CH2_WAIT_SEEK\f[]:  jnbt    [ga].\f[CB]REG_CYL_SK\f[],1,\f[CB]CH2_WAIT_SEEK\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK2\f[],\f[CB]DO_DISK_CMD\f[]
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]CH2_OP_DONE\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_TO_DMA\f[]
+.br
+\f[CB]CH2_OP_DONE\f[]:    movi    ga,\f[CB]WA2\f[]
+.br
+                lpd     gb,[pp].\f[CB]PB_OUT2_ADDR\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+\f[CB]CH2_DONE\f[]:
+.br
+
+.br
+                sintr
+.br
+                hlt
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Transfer data between the controller SRAM buffer and the controller.\f[]
+.br
+; \f[R]Handles the situations when the transfer crosses track boundary too.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]DO_DISK_CMD\f[]:    ljzb    [gc].\f[CB]CB_NUM_SECS\f[],\f[CB]DISK_CMD_DONE\f[]
+.br
+                movb    ix,[gc].\f[CB]CB_OP\f[]
+.br
+                andi    ix,7h
+.br
+                ljz     ix,\f[CB]DISK_CMD_DONE\f[]
+.br
+                movbi   [gc].\f[CB]WA_ERR_SEC\f[],0ffh
+.br
+                movi    gb,\f[CB]HDD_SECTOR_BUF\f[]
+.br
+                movi    [gc].\f[CB]WA_XFER_LEN\f[],512
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]SETUP_WRITE\f[]
+.br
+                movbi   [gc].\f[CB]WA_TMP_CMD\f[],1h
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_ECC\f[],\f[CB]SETUP_READ\f[]
+.br
+                movbi   [gc].\f[CB]WA_TMP_CMD\f[],9h
+.br
+                addi    [gc].\f[CB]WA_XFER_LEN\f[],5h \f[I]; ECC\f[]
+.br
+
+.br
+\f[CB]SETUP_READ\f[]:     movi    cc,8a28h
+.br
+                wid     8,16
+.br
+                jmp     \f[CB]SETUP_XFER\f[]
+.br
+
+.br
+\f[CB]SETUP_WRITE\f[]:    movbi   [gc].\f[CB]WA_TMP_CMD\f[],2h
+.br
+                movi    cc,5628h
+.br
+                wid     16,8
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_FMT\f[],\f[CB]SETUP_XFER\f[]
+.br
+                movbi   [gc].\f[CB]WA_TMP_CMD\f[],4h
+.br
+                movi    [gc].\f[CB]WA_XFER_LEN\f[],4h
+.br
+
+.br
+\f[CB]SETUP_XFER\f[]:     movi    mc,0fe80h
+.br
+\f[CB]DO_XFER\f[]:        movb    [ga],[gc].\f[CB]CB_SEC\f[]
+.br
+                movp    [gc].\f[CB]WA_CB_ADDR\f[],gb
+.br
+                mov     bc,[gc].\f[CB]WA_XFER_LEN\f[]
+.br
+                xfer
+.br
+                movb    [ga].\f[CB]REG_CMD_STAT\f[],[gc].\f[CB]WA_TMP_CMD\f[]
+.br
+                jmcne   [ga].\f[CB]REG_CMD_STAT\f[],\f[CB]DISK_OP_ERROR\f[]
+.br
+                decb    [gc].\f[CB]CB_NUM_SECS\f[]
+.br
+                jzb     [gc].\f[CB]CB_NUM_SECS\f[],\f[CB]DISK_CMD_DONE\f[]
+.br
+
+.br
+                \f[I]; Next sector on same track\f[]
+.br
+                incb    [gc].\f[CB]CB_SEC\f[]
+.br
+                jnbt    [gc].\f[CB]CB_SEC\f[],4,\f[CB]DO_XFER\f[]
+.br
+
+.br
+                \f[I]; Next head\f[]
+.br
+                incb    [gc].\f[CB]CB_DRV_HD\f[]
+.br
+                movb    mc,[gc].\f[CB]WA_CUR_DRV_HD\f[]
+.br
+                ori     mc,0f00h
+.br
+                jmce    [gc].\f[CB]CB_DRV_HD\f[],\f[CB]NEXT_CYL\f[]
+.br
+\f[CB]SECTOR_ZERO\f[]:    movb    [ga].\f[CB]REG_DRV_HD\f[],[gc].\f[CB]CB_DRV_HD\f[]
+.br
+                movbi   [gc].\f[CB]CB_SEC\f[],0h
+.br
+                jmp     \f[CB]SETUP_XFER\f[]
+.br
+
+.br
+                \f[I]; Next cylinder\f[]
+.br
+\f[CB]NEXT_CYL\f[]:       inc     [gc].\f[CB]CB_CYL\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEEK_TO_CYL\f[]
+.br
+                andbi   [gc].\f[CB]CB_DRV_HD\f[],0f0h
+.br
+\f[CB]POLL_OP_SEEK\f[]:   jnbt    [ga].\f[CB]REG_CYL_SK\f[],1,\f[CB]POLL_OP_SEEK\f[]
+.br
+                jmp     \f[CB]SECTOR_ZERO\f[]
+.br
+\f[CB]DISK_CMD_DONE\f[]:  jbt     [ga].\f[CB]REG_CMD_STAT\f[],0,\f[CB]DISK_CMD_DONE\f[]
+.br
+                movp    tp,[gc].\f[CB]WA_LINK2\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Retry on errors.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]DISK_OP_ERROR\f[]:  jbt     [ga].\f[CB]REG_CMD_STAT\f[],5,\f[CB]ERR_STATUS\f[]
+.br
+                jbt     [ga].\f[CB]REG_CMD_STAT\f[],1,\f[CB]ERR_STATUS\f[]
+.br
+                jbt     [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_UNK6\f[],\f[CB]NO_NEED_RECAL\f[]
+.br
+                movb    mc,[gc].\f[CB]CB_SEC\f[]
+.br
+                ori     mc,0ff00h
+.br
+                jmce    [gc].\f[CB]WA_ERR_SEC\f[],\f[CB]ERR_SEC_SET\f[]
+.br
+                movb    [gc].\f[CB]WA_ERR_SEC\f[],[gc].\f[CB]CB_SEC\f[]
+.br
+                movbi   [gc].\f[CB]WA_ERR_TRIES\f[],0h
+.br
+\f[CB]ERR_SEC_SET\f[]:    jbt     [ga].\f[CB]REG_CMD_STAT\f[],2,\f[CB]SKIP_RECAL\f[]
+.br
+                jbt     [ga].\f[CB]REG_CMD_STAT\f[],4,\f[CB]SKIP_RECAL\f[]
+.br
+                jnzb    [gc].\f[CB]WA_ERR_TRIES\f[],\f[CB]GIVE_UP\f[]
+.br
+
+.br
+                \f[I]; Seek to cylinder zero to recalibrate\f[]
+.br
+                movbi   [ga].\f[CB]REG_CYL_SK\f[],0
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEL_DRIVE\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]SEEK_TO_CYL\f[]
+.br
+\f[CB]POLL_RECAL\f[]:     jnbt    [ga].\f[CB]REG_CYL_SK\f[],1,\f[CB]POLL_RECAL\f[]
+.br
+
+.br
+                jmp     \f[CB]RECAL_DONE\f[]
+.br
+\f[CB]SKIP_RECAL\f[]:     jbt     [gc].\f[CB]WA_ERR_TRIES\f[],4,\f[CB]GIVE_UP\f[]
+.br
+\f[CB]RECAL_DONE\f[]:     incb    [gc].\f[CB]CB_RETRIES\f[]
+.br
+                incb    [gc].\f[CB]WA_ERR_TRIES\f[]
+.br
+\f[CB]NO_NEED_RECAL\f[]:  movb    [gc].\f[CB]CB_STAT\f[],[ga].\f[CB]REG_CMD_STAT\f[]
+.br
+                andbi   [gc].\f[CB]CB_STAT\f[],7eh
+.br
+                movbi   [ga].\f[CB]REG_CMD_STAT\f[],0h
+.br
+
+.br
+                \f[I]; Try again\f[]
+.br
+                ljnbt   [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_UNK6\f[],\f[CB]SETUP_XFER\f[]
+.br
+\f[CB]GIVE_UP\f[]:        setb    [gc].\f[CB]CB_STAT\f[],7
+.br
+                movp    tp,[gc].\f[CB]WA_LINK2\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Communicate the error and cancel both channels.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]ERR_STATUS\f[]:     movb    [gc].\f[CB]CB_STAT\f[],[ga].\f[CB]REG_CMD_STAT\f[]
+.br
+                ljmp    \f[CB]ERR_FINISH\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Copy the Command Block between the controller SRAM and main memory.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]COPY_CB\f[]:        movp    [gc].\f[CB]WA_CB_ADDR\f[],ga
+.br
+                movi    bc,\f[CB]CB_SIZE\f[]
+.br
+                call    [gc].\f[CB]WA_LINK1\f[],\f[CB]MEMCPY_16\f[]
+.br
+                movp    ga,[gc].\f[CB]WA_CB_ADDR\f[]
+.br
+                movbi   [ga].\f[CB]CB_OP\f[],0h
+.br
+                movi    ga,\f[CB]HDD_REGS_ADDR\f[]
+.br
+                jbt     [ga].\f[CB]REG_CMD_STAT\f[],1,\f[CB]ERR_STATUS\f[]
+.br
+                movp    tp,[gc].\f[CB]WA_LINK\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Copy a block of data (sector, CB) between main memory and SRAM.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]MEMCPY_16\f[]:      wid     16,16
+.br
+                movi    cc,0c008h
+.br
+                xfer
+.br
+                nop
+.br
+                movp    tp,[gc].\f[CB]WA_LINK1\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Set head and a cylinder.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]SET_TRACK\f[]:      movb    [ga].\f[CB]REG_DRV_HD\f[],[gc].\f[CB]CB_DRV_HD\f[]
+.br
+                movb    [ga].\f[CB]REG_CYL_SK\f[],[gc].\f[CB]WA_CUR_CYL\f[]+0
+.br
+                movb    [ga].\f[CB]REG_CYL_SK\f[],[gc].\f[CB]WA_CUR_CYL\f[]+1
+.br
+                movbi   [gc].\f[CB]CB_STAT\f[],0h
+.br
+
+.br
+                \f[I]; Wait for bit 7 to come up for up to FFh attempts\f[]
+.br
+                movi    bc,0h
+.br
+\f[CB]POLL_TRK_SET\f[]:   dec     bc
+.br
+                jz      bc,\f[CB]ERR_FINISH\f[]
+.br
+                jnbt    [ga].\f[CB]REG_CMD_STAT\f[],7,\f[CB]POLL_TRK_SET\f[]
+.br
+
+.br
+                movp    tp,[gc].\f[CB]WA_LINK\f[]
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Seek to a cylinder.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]SEEK_TO_CYL\f[]:    movb    [ga],[gc].\f[CB]WA_CUR_CYL\f[]+0
+.br
+                movb    [ga],[gc].\f[CB]WA_CUR_CYL\f[]+1
+.br
+                movb    [ga].\f[CB]REG_CYL_SK\f[],[gc].\f[CB]CB_CYL_LO\f[]
+.br
+                movb    [ga].\f[CB]REG_CYL_SK\f[],[gc].\f[CB]CB_CYL_HI\f[]
+.br
+                movbi   [ga].\f[CB]REG_CMD_STAT\f[],10h
+.br
+                mov     [gc].\f[CB]WA_CUR_CYL\f[],[gc].\f[CB]CB_CYL\f[]
+.br
+\f[CB]POLL_SEEK\f[]:      jbt     [ga].\f[CB]REG_CMD_STAT\f[],0,\f[CB]POLL_SEEK\f[]
+.br
+                movp    tp,[gc].\f[CB]WA_LINK1\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Select a disk drive unit.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]SEL_DRIVE\f[]:      movbi   [ga].\f[CB]REG_CMD_STAT\f[],80h
+.br
+                movbi   [gc].\f[CB]CB_STAT\f[],0h
+.br
+                jnbt    [gc].\f[CB]CB_OP\f[],\f[CB]OP_BIT_UNK7\f[],\f[CB]NO_BIT_7\f[]
+.br
+                movb    [gc].\f[CB]WA_CUR_DRV_HD\f[],[gc].\f[CB]CB_DRV_HD\f[]
+.br
+\f[CB]NO_BIT_7\f[]:       movb    [ga].\f[CB]REG_DRV_HD\f[],[gc].\f[CB]CB_DRV_HD\f[]
+.br
+
+.br
+                \f[I]; Wait for bit 7 to come up for up to FFh attempts\f[]
+.br
+                movi    bc,0h
+.br
+\f[CB]POLL_STAT_7\f[]:    dec     bc
+.br
+                jz      bc,\f[CB]ERR_FINISH\f[]
+.br
+                jnbt    [ga].\f[CB]REG_CMD_STAT\f[],7,\f[CB]POLL_STAT_7\f[]
+.br
+
+.br
+                movbi   [ga].\f[CB]REG_CMD_STAT\f[],20h
+.br
+                movi    [gc].\f[CB]WA_CUR_CYL\f[],0h
+.br
+\f[CB]POLL_SEL\f[]:       jbt     [ga].\f[CB]REG_CMD_STAT\f[],0,\f[CB]POLL_SEL\f[]
+.br
+                movp    tp,[gc].\f[CB]WA_LINK1\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Indicate errors in both channels.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]ERR_FINISH\f[]:     movi    ga,\f[CB]WA1\f[]
+.br
+                orbi    [ga].\f[CB]CB_STAT\f[],81h
+.br
+                lpd     gb,[pp].\f[CB]PB_OUT1_ADDR\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+
+.br
+                movi    ga,\f[CB]WA2\f[]
+.br
+                orbi    [ga].\f[CB]CB_STAT\f[],81h
+.br
+                lpd     gb,[pp].\f[CB]PB_OUT2_ADDR\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK\f[],\f[CB]COPY_CB\f[]
+.br
+
+.br
+                sintr
+.br
+                hlt
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Copy data indicated by CB from main memory to controller SRAM.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]COPY_FROM_DMA\f[]:  jz      [gc].\f[CB]CB_LEN\f[],\f[CB]COPIED_IN\f[]
+.br
+                setb    [gc].\f[CB]CB_REG_28H\f[],4
+.br
+                movb    [ga].\f[CB]REG_28H\f[],[gc].\f[CB]CB_REG_28H\f[]
+.br
+
+.br
+                \f[I]; Copy from DMA buffer to sector buf\f[]
+.br
+                lpd     ga,[gc].\f[CB]CB_BUF_ADDR\f[]
+.br
+                movi    gb,\f[CB]HDD_SECTOR_BUF\f[]
+.br
+                mov     bc,[gc].\f[CB]CB_LEN\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]MEMCPY_16\f[]
+.br
+
+.br
+                movi    ga,\f[CB]HDD_REGS_ADDR\f[]
+.br
+                movbi   [ga].\f[CB]REG_28H\f[],10h
+.br
+                ljbt    [ga].\f[CB]REG_CMD_STAT\f[],1,\f[CB]ERR_STATUS\f[]
+.br
+\f[CB]COPIED_IN\f[]:      movp    tp,[gc].\f[CB]WA_LINK\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Copy data indicated by CB to main memory from controller SRAM.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]COPY_TO_DMA\f[]:    jz      [gc].\f[CB]CB_LEN\f[],\f[CB]COPIED_OUT\f[]
+.br
+                setb    [gc].\f[CB]CB_REG_28H\f[],4
+.br
+                movb    [ga].\f[CB]REG_28H\f[],[gc].\f[CB]CB_REG_28H\f[]
+.br
+
+.br
+                \f[I]; Copy sector buf to DMA buffer\f[]
+.br
+                lpd     gb,[gc].\f[CB]CB_BUF_ADDR\f[]
+.br
+                movi    ga,\f[CB]HDD_SECTOR_BUF\f[]
+.br
+                mov     bc,[gc].\f[CB]CB_LEN\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]MEMCPY_16\f[]
+.br
+
+.br
+                movi    ga,\f[CB]HDD_REGS_ADDR\f[]
+.br
+                movbi   [ga].\f[CB]REG_28H\f[],10h
+.br
+\f[CB]COPIED_OUT\f[]:     movp    tp,[gc].\f[CB]WA_LINK\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Command block copies and sector data copies in controller SRAM.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]WA1\f[]:            DS \f[CB]WA_SIZE\f[]
+.br
+\f[CB]WA2\f[]:            DS \f[CB]WA_SIZE\f[]
+.br
+\f[CB]HDD_SECTOR_BUF\f[]:
+.br
+
+.br
+.bp
+                \f[I]; Pad the loader to 0400h\f[]
+.br
+                DS \f[CB]LOADER_OFFSET\f[]-\f[CB]HDD_SECTOR_BUF\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]The bootstrap routine. Copies the IOP to controller SRAM so that it\f[]
+.br
+; \f[R]can be executed without main memory contention.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]LOADER\f[]:
+.br
+                lpd     gc,[pp] \f[I]; [pp].PB_TB\f[]
+.br
+                lpd     ga,[pp] \f[I]; [pp].PB_TB\f[]
+.br
+                movi    gb,\f[CB]HDD_SRAM_ADDR\f[]
+.br
+
+.br
+                \f[I]; Move 400 bytes back to set BC=IOP base\f[]
+.br
+                movi    bc,\f[CB]LOADER\f[]
+.br
+                not     bc
+.br
+                inc     bc
+.br
+
+.br
+                \f[I]; Initialize CH2 area\f[]
+.br
+                mov     [gb],bc
+.br
+                add     ga,[gb]
+.br
+                add     gc,[gb]
+.br
+                addi    gc,\f[CB]WA2\f[]
+.br
+                lpd     gb,[pp].\f[CB]PB_IN2_ADDR\f[]
+.br
+                movb    [gc].\f[CB]WA_CUR_DRV_HD\f[],[gb].\f[CB]CB_DRV_HD\f[]
+.br
+                movi    gb,\f[CB]HDD_SRAM_ADDR\f[]
+.br
+
+.br
+                \f[I]; Initialize CH1 area\f[]
+.br
+                movp    [gb],ga
+.br
+                movp    gc,[gb]
+.br
+                addi    gc,\f[CB]WA1\f[]
+.br
+                lpd     gb,[pp].\f[CB]PB_IN1_ADDR\f[]
+.br
+                movb    [gc].\f[CB]WA_CUR_DRV_HD\f[],[gb].\f[CB]CB_DRV_HD\f[]
+.br
+                movi    gb,\f[CB]HDD_SRAM_ADDR\f[]
+.br
+
+.br
+                \f[I]; Relocate the IOP\f[]
+.br
+                movi    bc,\f[CB]HDD_SECTOR_BUF\f[]
+.br
+                lcall   [gc].\f[CB]WA_LINK1\f[],\f[CB]MEMCPY_16\f[]
+.br
+
+.br
+                movi    ga,\f[CB]HDD_REGS_ADDR\f[]
+.br
+                movbi   [ga].\f[CB]REG_28H\f[],10h
+.br
+
+.br
+                sintr
+.br
+                hlt
+.br
+.ft R

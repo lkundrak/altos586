@@ -1,0 +1,356 @@
+.ft CW
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Program parameters, passed by the user.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]IOPB\f[]            STRUC
+.br
+                DS 4    \f[I]; Task Block pointer\f[]
+.br
+\f[CB]IOPB_OP\f[]:        DS 1
+.br
+\f[CB]IOPB_STATUS\f[]:    DS 1
+.br
+\f[CB]IOPB_CYL\f[]:       DS 2
+.br
+\f[CB]IOPB_DRV_HD\f[]:    DS 1
+.br
+\f[CB]IOPB_SEC\f[]:       DS 1    \f[I]; Starting sector\f[]
+.br
+\f[CB]IOPB_BYTE_CNT\f[]:  DS 2    \f[I]; The DMA buffer size\f[]
+.br
+\f[CB]IOPB_DMA_BUF\f[]:   DS 4    \f[I]; The DMA buffer address\f[]
+.br
+\f[CB]IOPB_SEC_CNT\f[]:   DS 2    \f[I]; Number of sectors\f[]
+.br
+                        \f[I]; The following members are reserved for use by the IOP.\f[]
+.br
+\f[CB]IOPB_IO_SIZE\f[]:   DS 2    \f[I]; Written by the IOP\f[]
+.br
+\f[CB]IOPB_LAST_CYL\f[]:  DS 2    \f[I]; Last cylinder we've seeked to\f[]
+.br
+\f[CB]IOPB_LINK_REG\f[]:  DS 2    \f[I]; Return address of subroutine calls\f[]
+.br
+\f[CB]IOPB\f[]            ENDS
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Bits of IOPB_OP.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]OP_BIT_RD\f[]       EQU 0   \f[I]; Read (0) or write (1)\f[]
+.br
+\f[CB]OP_BIT_FORMAT\f[]   EQU 2
+.br
+\f[CB]OP_BIT_ECC\f[]      EQU 3   \f[I]; Include the ECC bits on read\f[]
+.br
+\f[CB]OP_BIT_SEL\f[]      EQU 5   \f[I]; Drive/Head has changed\f[]
+.br
+\f[CB]OP_CMD_BITS\f[]     EQU 0FH
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Bits of IOPB_STATUS.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]STATUS_BIT_ERR\f[]  EQU 7
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]These are addresses in 8089's I/O space.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]HDD_SRAM_ADDR\f[]   EQU 00000H
+.br
+\f[CB]HDD_REGS_ADDR\f[]   EQU 0FFD0H
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Registers at HDD_REGS_ADDR.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]PORT_DATA\f[]       EQU 00H
+.br
+\f[CB]PORT_DRV_HD\f[]     EQU 02H
+.br
+\f[CB]PORT_04H\f[]        EQU 04H
+.br
+\f[CB]PORT_CMD_STAT\f[]   EQU 06H
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]The entry point.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]ENTRY\f[]:          movi  gc,\f[CB]HDD_REGS_ADDR\f[]
+.br
+
+.br
+                \f[I]; Is bit 5 set?\f[]
+.br
+                jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]NO_SEL\f[]
+.br
+
+.br
+                \f[I]; If bit 5 is set, then drive and head might have\f[]
+.br
+                \f[I]; Changed and we need ensure correct head is selected.\f[]
+.br
+                movbi [gc].\f[CB]PORT_CMD_STAT\f[],80H
+.br
+                movb  [gc].\f[CB]PORT_DRV_HD\f[],[pp].\f[CB]IOPB_DRV_HD\f[]
+.br
+\f[CB]B0\f[]:             jnbt  [gc].\f[CB]PORT_CMD_STAT\f[],7,\f[CB]B0\f[]
+.br
+
+.br
+                movbi [gc].\f[CB]PORT_CMD_STAT\f[],20H
+.br
+                movi  [pp].\f[CB]IOPB_LAST_CYL\f[],0
+.br
+\f[CB]C0\f[]:             jbt   [gc].\f[CB]PORT_CMD_STAT\f[],0,\f[CB]C0\f[]
+.br
+
+.br
+                ljnbt [gc].\f[CB]PORT_04H\f[],0,\f[CB]RETURN_81H\f[] \f[I]; Error?\f[]
+.br
+
+.br
+\f[CB]NO_SEL\f[]:         andbi [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_CMD_BITS\f[] \f[I]; Command bits mask\f[]
+.br
+                ljzb  [pp].\f[CB]IOPB_OP\f[],\f[CB]RETURN_00H\f[] \f[I]; Command is zero\f[]
+.br
+
+.br
+                \f[I]; Select head\f[]
+.br
+                movb  [gc].\f[CB]PORT_DRV_HD\f[],[pp].\f[CB]IOPB_DRV_HD\f[]
+.br
+\f[CB]B1\f[]:             jnbt  [gc].\f[CB]PORT_CMD_STAT\f[],7,\f[CB]B1\f[]
+.br
+
+.br
+                \f[I]; Seek to cylinder\f[]
+.br
+                movb  [gc],[pp].\f[CB]IOPB_LAST_CYL\f[] \f[I]; [gc].PORT_DATA\f[]
+.br
+                movb  [gc],[pp].\f[CB]IOPB_LAST_CYL\f[]+1 \f[I]; [gc].PORT_DATA\f[]
+.br
+                movb  [gc].\f[CB]PORT_04H\f[],[pp].\f[CB]IOPB_CYL\f[]
+.br
+                movb  [gc].\f[CB]PORT_04H\f[],[pp].\f[CB]IOPB_CYL\f[]+1
+.br
+                movbi [gc].\f[CB]PORT_CMD_STAT\f[],10H
+.br
+                mov   [pp].\f[CB]IOPB_LAST_CYL\f[],[pp].\f[CB]IOPB_CYL\f[]
+.br
+\f[CB]C1\f[]:             jbt   [gc].\f[CB]PORT_CMD_STAT\f[],0,\f[CB]C1\f[]
+.br
+\f[CB]D0\f[]:             jnbt  [gc].\f[CB]PORT_04H\f[],1,\f[CB]D0\f[]
+.br
+
+.br
+                \f[I]; Zero sectors? Nothing to do.\f[]
+.br
+                jzb   [pp].\f[CB]IOPB_SEC_CNT\f[],\f[CB]RETURN_00H\f[]
+.br
+
+.br
+                \f[I]; A read?\f[]
+.br
+                jbt   [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]HDD_SRAM_XFER\f[]
+.br
+
+.br
+                \f[I]; Whis is a write. Transfer the data from main memory\f[]
+.br
+                \f[I]; DMA buffer to controller board SRAM first\f[]
+.br
+                lpd   ga,[pp].\f[CB]IOPB_DMA_BUF\f[]
+.br
+                movi  gb,\f[CB]PORT_DATA\f[]
+.br
+                mov   bc,[pp].\f[CB]IOPB_BYTE_CNT\f[]
+.br
+                call  [pp].\f[CB]IOPB_LINK_REG\f[],\f[CB]MEM_SRAM_XFER\f[]
+.br
+
+.br
+.bp
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Transfer between SRAM and the HDD's data register.\f[]
+.br
+; \f[R]Common to read and write.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]HDD_SRAM_XFER\f[]:  movi  gb,\f[CB]HDD_SRAM_ADDR\f[]
+.br
+                movi  mc,0FE80H \f[I]; Why?\f[]
+.br
+                movi  ga,\f[CB]HDD_REGS_ADDR\f[]+\f[CB]PORT_DATA\f[]
+.br
+                movi  [pp].\f[CB]IOPB_IO_SIZE\f[],512
+.br
+
+.br
+                \f[I]; A read or write?\f[]
+.br
+                jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]XFER_WR\f[]
+.br
+                movi  cc,8A28H \f[I]; A read. Setup for SRAM to HDD transfer.\f[]
+.br
+                wid   8,16
+.br
+
+.br
+                \f[I]; Add 5 bytes if ECC requested.\f[]
+.br
+                jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_ECC\f[],\f[CB]XFER_SEC\f[]
+.br
+                movi  [pp].\f[CB]IOPB_IO_SIZE\f[],512+5
+.br
+                jmp   \f[CB]XFER_SEC\f[]
+.br
+
+.br
+                \f[I]; A write. Setup for transfer from SRAM to HDD.\f[]
+.br
+\f[CB]XFER_WR\f[]:        movi  cc,5628H
+.br
+                wid   16,8
+.br
+                jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_FORMAT\f[],\f[CB]XFER_SEC\f[]
+.br
+                movi  [pp].\f[CB]IOPB_IO_SIZE\f[],4 \f[I]; Sector header\f[]
+.br
+
+.br
+                \f[I]; Transfer one sector\f[]
+.br
+\f[CB]XFER_SEC\f[]:       mov   bc,[pp].\f[CB]IOPB_IO_SIZE\f[]
+.br
+                movb  [gc],[pp].\f[CB]IOPB_SEC\f[] \f[I]; [gc].PORT_DATA\f[]
+.br
+                xfer
+.br
+
+.br
+                \f[I]; Check for errors\f[]
+.br
+                movb  [gc].\f[CB]PORT_CMD_STAT\f[],[pp].\f[CB]IOPB_OP\f[]
+.br
+                jmcne [gc].\f[CB]PORT_CMD_STAT\f[],\f[CB]RETURN_ERR\f[]
+.br
+
+.br
+                \f[I]; Are we done or there's more?\f[]
+.br
+                decb  [pp].\f[CB]IOPB_SEC_CNT\f[]
+.br
+                jzb   [pp].\f[CB]IOPB_SEC_CNT\f[],\f[CB]XFER_DONE\f[]
+.br
+                incb  [pp].\f[CB]IOPB_SEC\f[] \f[I]; There's more.\f[]
+.br
+                jmp   \f[CB]XFER_SEC\f[]
+.br
+
+.br
+                \f[I]; HDD - SRAM transfer done. We're done if it was a write.\f[]
+.br
+\f[CB]XFER_DONE\f[]:      jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]RETURN_00H\f[]
+.br
+
+.br
+                \f[I]; This was a read. We need to transfer from SRAM to DMA buffer.\f[]
+.br
+                lpd   gb,[pp].\f[CB]IOPB_DMA_BUF\f[]
+.br
+                movi  ga,\f[CB]PORT_DATA\f[]
+.br
+                mov   bc,[pp].\f[CB]IOPB_BYTE_CNT\f[]
+.br
+                call  [pp].\f[CB]IOPB_LINK_REG\f[],\f[CB]MEM_SRAM_XFER\f[]
+.br
+
+.br
+                \f[I]; Successful return.\f[]
+.br
+\f[CB]RETURN_00H\f[]:     movbi [pp].\f[CB]IOPB_STATUS\f[],0
+.br
+                jmp   \f[CB]DONE\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]A subroutine that does a memory-to memory transfer.\f[]
+.br
+; \f[R]Used to copy data between the controller SRAM and the DMA buffer in\f[]
+.br
+; \f[R]main memory, in either direction.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]MEM_SRAM_XFER\f[]:  wid   16,16
+.br
+                movi  cc,0C208H
+.br
+                xfer
+.br
+                nop
+.br
+                movp  tp,[pp].\f[CB]IOPB_LINK_REG\f[]
+.br
+
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+; \f[R]Error return. Communicate the error from the status.\f[]
+.br
+; \f[R]register to the IOPB.\f[]
+.br
+;\f[R]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\[em]\f[]
+.br
+\f[CB]RETURN_ERR\f[]:     movb  [pp].\f[CB]IOPB_STATUS\f[],[gc].\f[CB]PORT_CMD_STAT\f[]
+.br
+                andbi [pp].\f[CB]IOPB_STATUS\f[],7EH
+.br
+                setb  [pp].\f[CB]IOPB_STATUS\f[],\f[CB]STATUS_BIT_ERR\f[]
+.br
+                movbi [gc].\f[CB]PORT_CMD_STAT\f[],00H
+.br
+                jmp   \f[CB]DONE\f[]
+.br
+
+.br
+                \f[I]; Error 1.\f[]
+.br
+\f[CB]RETURN_81H\f[]:     movi  [pp].\f[CB]IOPB_STATUS\f[],(1<<\f[CB]STATUS_BIT_ERR\f[])+1
+.br
+
+.br
+\f[CB]DONE\f[]:           sintr
+.br
+                hlt
+.br
+.ft R
