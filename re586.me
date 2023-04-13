@@ -5,7 +5,7 @@
 .(l C
 .b "Notes on the Altos 586 Computer"
 .sp  2
-Work in progress, November 2022
+Work in progress, April 2023
 by Lubomir Rintel
 .)l
 .sp  2
@@ -856,9 +856,6 @@ O - write I/O port
 .bp
 .sh 1 "Hard Drive Controller Board"
 
-I don't own this board and know little more about the board
-than could be observed from firmware disassembly.
-
 This hard drive controller is based on the Intel 8089 I/O processor.
 The 8089 processor is connected to on-board logic and sector buffer
 SRAM via a private bus, allowing them to be accessed without
@@ -874,10 +871,25 @@ and writes. It is parametrized by I/O parameter blocks
 (IOPB) placed in the main memory. It is described in detail in
 section below.
 
-.sh 2 "IOPB Handling Program"
+So far, I've observed two I/O programs for the controller board:
+one in the firmware and another on a diagnostic floppy. The Xenix
+operating system apparently uses yet another -- I haven't looked
+into that one yet.
 
-This program is provided in the firmware image and run on the 8089
-on the hard drive board to service the I/O operations.
+The following paragraphs give a quick overview of the two I/O
+programs followed by commented disassembly listings. The programs
+can be assembled using Eric Smith's Assembler for the 8089.\**
+.(f
+\**
+Available from
+.i https://github.com/brouhaha/i89
+.)f
+
+.sh 2 "Firmware IO Handling Program"
+
+This is the simple of the two I/O programs. It is provided in the
+firmware image and run on the 8089 on the hard drive board to
+service the I/O operations.
 
 It is controlled by the I/O parameter block structure to ultimately
 transfer data between a main memory buffer and the hard drive.
@@ -904,357 +916,35 @@ transferred between SRAM and main memory is specified in IOPB directly.
 These two numbers are related -- main memory transfer needs to
 transfer sufficient number of bytes to include complete sector data.
 
-The commented I/O program follows:
+The I/O program listing\** follows.
+.(f
+\**
+Assembly source available from
+.i https://github.com/lkundrak/altos586/blob/main/8089/iop3268.asm
+.)f
 
-.ft CW
-\f[I]; Program parameters, passed by the user\f[]
-.br
-\f[CB]IOPB_OP\f[]         EQU 04H
-.br
-\f[CB]IOPB_STATUS\f[]     EQU 05H
-.br
-\f[CB]IOPB_CYL\f[]        EQU 06H
-.br
-\f[CB]IOPB_DRV_HD\f[]     EQU 08H
-.br
-\f[CB]IOPB_SEC\f[]        EQU 09H \f[I]; Starting sector\f[]
-.br
-\f[CB]IOPB_BYTE_CNT\f[]   EQU 0AH \f[I]; The DMA buffer size\f[]
-.br
-\f[CB]IOPB_DMA_BUF\f[]    EQU 0CH \f[I]; The DMA buffer address\f[]
-.br
-\f[CB]IOPB_SEC_CNT\f[]    EQU 10H \f[I]; Number of sectors\f[]
-.br
+.bp
+.so 8089/iop3268.me
 
-.br
-\f[I]; These are reserved to be used by the IOP\f[]
-.br
-\f[CB]IOPB_IO_SIZE\f[]    EQU 12H \f[I]; Written by the IOP\f[]
-.br
-\f[CB]IOPB_LAST_CYL\f[]   EQU 14H \f[I]; Last cylinder we've seeked to\f[]
-.br
-\f[CB]IOPB_LINK_REG\f[]   EQU 16H \f[I]; Return address of subroutine calls\f[]
-.br
+.bp
+.sh 2 "Diagnostic IO Handling Program"
 
-.br
-\f[I]; Bits of IOPB_OP\f[]
-.br
-\f[CB]OP_BIT_RD\f[]       EQU 0   \f[I]; Read (0) or write (1)\f[]
-.br
-\f[CB]OP_BIT_UNK\f[]      EQU 2
-.br
-\f[CB]OP_BIT_ECC\f[]      EQU 3   \f[I]; Include the ECC bits on read\f[]
-.br
-\f[CB]OP_BIT_SEL\f[]      EQU 5   \f[I]; Drive/Head has changed\f[]
-.br
-\f[CB]OP_CMD_BITS\f[]     EQU 0FH
-.br
+This one is from the diagnostic utility floppy program, that's
+capable of reading, writing, verifying and formatting the disk.
 
-.br
-\f[I]; Bits of IOPB_STATUS\f[]
-.br
-\f[CB]STATUS_BIT_ERR\f[]  EQU 7
-.br
+It is designed for high-performance I/O. The diagnostic program
+first invokes a routine that copies another I/O program into
+the controller board SRAM. That way it can be executed without
+contending for the main memory.
 
-.br
-\f[I]; These are addresses in 8089's I/O space\f[]
-.br
-\f[CB]HDD_SRAM_ADDR\f[]   EQU 00000H
-.br
-\f[CB]HDD_REGS_ADDR\f[]   EQU 0FFD0H
-.br
+It is also able to enqueue two I/O requests, presumably for
+submitting requests to two drives concurrently.
 
-.br
-\f[I]; Registers at HDD_REGS_ADDR\f[]
-.br
-\f[CB]PORT_DATA\f[]       EQU 00H
-.br
-\f[CB]PORT_DRV_HD\f[]     EQU 02H
-.br
-\f[CB]PORT_04H\f[]        EQU 04H
-.br
-\f[CB]PORT_CMD_STAT\f[]   EQU 06H
-.br
+The I/O program listing\** follows.
+.(f
+\**
+Assembly source available from
+.i https://github.com/lkundrak/altos586/blob/main/8089/hd-test.asm
+.)f
 
-.br
-\f[CB]ENTRY\f[]:
-.br
-        movi  gc,\f[CB]HDD_REGS_ADDR\f[]
-.br
-
-.br
-        \f[I]; Is bit 5 set?\f[]
-.br
-        jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_SEL\f[],\f[CB]NO_SEL\f[]
-.br
-
-.br
-        \f[I]; If bit 5 is set, then drive and head might have\f[]
-.br
-        \f[I]; CHanged and we need ensure correct head is selected.\f[]
-.br
-        movbi [gc].\f[CB]PORT_CMD_STAT\f[],80H
-.br
-        movb  [gc].\f[CB]PORT_DRV_HD\f[],[pp].\f[CB]IOPB_DRV_HD\f[]
-.br
-\f[CB]B0\f[]:     jnbt  [gc].\f[CB]PORT_CMD_STAT\f[],7,B0
-.br
-
-.br
-        movbi [gc].\f[CB]PORT_CMD_STAT\f[],20H
-.br
-        movi  [pp].\f[CB]IOPB_LAST_CYL\f[],0
-.br
-\f[CB]C0\f[]:     jbt   [gc].\f[CB]PORT_CMD_STAT\f[],0,C0
-.br
-
-.br
-        ljnbt [gc].\f[CB]PORT_04H\f[],0,\f[CB]RETURN_81H\f[]        \f[I]; Error?\f[]
-.br
-
-.br
-\f[CB]NO_SEL\f[]:
-.br
-        andbi [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_CMD_BITS\f[]  \f[I]; Command bits mask\f[]
-.br
-        ljzb  [pp].\f[CB]IOPB_OP\f[],\f[CB]RETURN_00H\f[]   \f[I]; Command is zero\f[]
-.br
-
-.br
-        \f[I]; Select head\f[]
-.br
-        movb  [gc].\f[CB]PORT_DRV_HD\f[],[pp].\f[CB]IOPB_DRV_HD\f[]
-.br
-\f[CB]B1\f[]:     jnbt  [gc].\f[CB]PORT_CMD_STAT\f[],7,B1
-.br
-
-.br
-        \f[I]; Seek to cylinder\f[]
-.br
-        movb  [gc].\f[CB]PORT_DATA\f[],[pp].\f[CB]IOPB_LAST_CYL\f[]
-.br
-        movb  [gc].\f[CB]PORT_DATA\f[],[pp].\f[CB]IOPB_LAST_CYL\f[]+1
-.br
-        movb  [gc].\f[CB]PORT_04H\f[],[pp].\f[CB]IOPB_CYL\f[]
-.br
-        movb  [gc].\f[CB]PORT_04H\f[],[pp].\f[CB]IOPB_CYL\f[]+1
-.br
-        movbi [gc].\f[CB]PORT_CMD_STAT\f[],10H
-.br
-        mov   [pp].\f[CB]IOPB_LAST_CYL\f[],[pp].\f[CB]IOPB_CYL\f[]
-.br
-\f[CB]C1\f[]:     jbt   [gc].\f[CB]PORT_CMD_STAT\f[],0,C1
-.br
-\f[CB]D0\f[]:     jnbt  [gc].\f[CB]PORT_04H\f[],1,D0
-.br
-
-.br
-        \f[I]; Zero sectors? Tothing to do.\f[]
-.br
-        jzb   [pp].\f[CB]IOPB_SEC_CNT\f[],\f[CB]RETURN_00H\f[]
-.br
-
-.br
-        \f[I]; A read?\f[]
-.br
-        jbt   [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]HDD_SRAM_XFER\f[]
-.br
-
-.br
-        \f[I]; Whis is a write. Transfer the data from main memory\f[]
-.br
-        \f[I]; DMA buffer to controller board SRAM first\f[]
-.br
-        lpd   ga,[pp].\f[CB]IOPB_DMA_BUF\f[]
-.br
-        movi  gb,\f[CB]PORT_DATA\f[]
-.br
-        mov   bc,[pp].\f[CB]IOPB_BYTE_CNT\f[]
-.br
-        call  [pp].\f[CB]IOPB_LINK_REG\f[],\f[CB]MEM_SRAM_XFER\f[]
-.br
-
-.br
-\f[CB]HDD_SRAM_XFER\f[]:
-.br
-        \f[I]; Setup for for a transfer between SRAM and the HDD's\f[]
-.br
-        \f[I]; data register, common to read and write\f[]
-.br
-        movi  gb,\f[CB]HDD_SRAM_ADDR\f[]
-.br
-        movi  mc,0FE80H \f[I]; Why?\f[]
-.br
-        movi  ga,\f[CB]HDD_REGS_ADDR\f[]+\f[CB]PORT_DATA\f[]
-.br
-        movi  [pp].\f[CB]IOPB_IO_SIZE\f[],512
-.br
-
-.br
-        \f[I]; A read or write?\f[]
-.br
-        jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]XFER_WR\f[]
-.br
-
-.br
-        \f[I]; A read. Setup for transfer from HDD from SRAM.\f[]
-.br
-        movi  cc,8A28H
-.br
-        wid   8,16
-.br
-
-.br
-        \f[I]; Go do the transfer if we don't want ECC\f[]
-.br
-        jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_ECC\f[],\f[CB]XFER_SEC\f[]
-.br
-
-.br
-        \f[I]; We want ECC. Bump the transfer size.\f[]
-.br
-        movi  [pp].\f[CB]IOPB_IO_SIZE\f[],512+5
-.br
-        jmp   \f[CB]XFER_SEC\f[]
-.br
-
-.br
-\f[CB]XFER_WR\f[]:
-.br
-        \f[I]; A write. Setup for transfer from SRAM to HDD.\f[]
-.br
-        movi  cc,5628H
-.br
-        wid   16,8
-.br
-        jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_UNK\f[],\f[CB]XFER_SEC\f[]
-.br
-        movi  [pp].\f[CB]IOPB_IO_SIZE\f[],4 \f[I]; No idea what this is.\f[]
-.br
-
-.br
-\f[CB]XFER_SEC\f[]:
-.br
-        \f[I]; Transfer one sector\f[]
-.br
-        mov   bc,[pp].\f[CB]IOPB_IO_SIZE\f[]
-.br
-        movb  [gc].\f[CB]PORT_DATA\f[],[pp].\f[CB]IOPB_SEC\f[]
-.br
-        xfer
-.br
-
-.br
-        \f[I]; Check for errors\f[]
-.br
-        movb  [gc].\f[CB]PORT_CMD_STAT\f[],[pp].\f[CB]IOPB_OP\f[]
-.br
-        jmcne [gc].\f[CB]PORT_CMD_STAT\f[],\f[CB]RETURN_ERR\f[]
-.br
-
-.br
-        \f[I]; Are we done or there's more?\f[]
-.br
-        decb  [pp].\f[CB]IOPB_SEC_CNT\f[]
-.br
-        jzb   [pp].\f[CB]IOPB_SEC_CNT\f[],\f[CB]HDD_SRAM_XFER_DONE\f[]
-.br
-
-.br
-        \f[I]; There's more.\f[]
-.br
-        incb  [pp].\f[CB]IOPB_SEC\f[]
-.br
-        jmp   \f[CB]XFER_SEC\f[]
-.br
-
-.br
-
-.br
-\f[CB]HDD_SRAM_XFER_DONE\f[]:
-.br
-        \f[I]; Transfer between HDD and SRAM has finished.\f[]
-.br
-        \f[I]; Was it a write? Then we're all done.\f[]
-.br
-        jnbt  [pp].\f[CB]IOPB_OP\f[],\f[CB]OP_BIT_RD\f[],\f[CB]RETURN_00H\f[]
-.br
-
-.br
-        \f[I]; This was a read. We need to transfer from SRAM\f[]
-.br
-        \f[I]; to the main memory DMA buffer.\f[]
-.br
-        lpd   gb,[pp].\f[CB]IOPB_DMA_BUF\f[]
-.br
-        movi  ga,\f[CB]PORT_DATA\f[]
-.br
-        mov   bc,[pp].\f[CB]IOPB_BYTE_CNT\f[]
-.br
-        call  [pp].\f[CB]IOPB_LINK_REG\f[],\f[CB]MEM_SRAM_XFER\f[]
-.br
-
-.br
-\f[CB]RETURN_00H\f[]:
-.br
-        \f[I]; Successful return.\f[]
-.br
-        movbi [pp].\f[CB]IOPB_STATUS\f[],0
-.br
-        jmp   \f[CB]DONE\f[]
-.br
-
-.br
-\f[CB]MEM_SRAM_XFER\f[]:
-.br
-        \f[I]; A subroutine that does a memory-to memory transfer.\f[]
-.br
-        \f[I]; Used to copy data between the controller SRAM and\f[]
-.br
-        \f[I]; the DMA buffer in main memory, in either direction.\f[]
-.br
-        wid   16,16
-.br
-        movi  cc,0C208H
-.br
-        xfer
-.br
-        nop
-.br
-        movp  tp,[pp].\f[CB]IOPB_LINK_REG\f[]
-.br
-
-.br
-\f[CB]RETURN_ERR\f[]:
-.br
-        \f[I]; Error return. Communicate the error from the status\f[]
-.br
-        \f[I]; register to the IOPB.\f[]
-.br
-        movb  [pp].\f[CB]IOPB_STATUS\f[],[gc].\f[CB]PORT_CMD_STAT\f[]
-.br
-        andbi [pp].\f[CB]IOPB_STATUS\f[],7EH
-.br
-        setb  [pp].\f[CB]IOPB_STATUS\f[],\f[CB]STATUS_BIT_ERR\f[]
-.br
-        movbi [gc].\f[CB]PORT_CMD_STAT\f[],00H
-.br
-        jmp   \f[CB]DONE\f[]
-.br
-
-.br
-\f[CB]RETURN_81H\f[]:
-.br
-        \f[I]; Error 1.\f[]
-.br
-        movi  [pp].\f[CB]IOPB_STATUS\f[],\f[CB]STATUS_BIT_ERR\f[]+1
-.br
-
-.br
-\f[CB]DONE\f[]:
-.br
-        sintr
-.br
-        hlt
-.br
-.ft R
+.so 8089/hd-test.me
