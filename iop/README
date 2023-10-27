@@ -9,7 +9,7 @@ The IOP ROM chip on my board was an AM2764A marked with "16573" label.
 It includes the string "5-86 IOP monitor - version 6.2".
 
   Filename     SHA256 Checksum
-  iop.bin      c8ab0fc3aa3dd1654f3065c3d09456303af63ebc9e8f5a25529b87dd1734a573
+  iop.bin      f2af03d361dddbf6aae055e69210c994ead281d8
 
 It was read with the following command:
 
@@ -23,7 +23,7 @@ versions lack the Z80 support. It is a 32-bit Windows text console program
 that works mostly fine on Linux via wineconsole.
 
   Filename     SHA256 Checksum
-  idafre41.zip 43801cf8116024b72a352cc28cd49db4a67ced69c772e9bf946caf7d080dad52
+  idafre41.zip 0a0baacecfd54f6f09d6c5de7bfeb43f41b12a5c
 
 Here are some mirrors I've been able to find:
 

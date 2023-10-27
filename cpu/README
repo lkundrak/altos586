@@ -24,10 +24,10 @@ merging is done with merge.pl:
 
 The resulting image includes the string "Monitor Version V1.3".
 
-  Filename               SHA256 Checksum
-  altos586-v13-g1.rom    e610510ec46924b6d85f698ac1866fb3cccf0f88e4614730b86262d4bd84af30
-  altos586-v13-g2.rom    a61b5a2baa04017e1c34985bf1d9d10562ea205d90afbbd759a10ac179eefeec
-  altos586-v13.bin       1c28e1c9f5dd0f0f9800dfd4000945c755d940550d0bc6e8c032a7691f0db02c
+  Filename               SHA1 Checksum
+  altos586-v13-g1.rom    34700603d6034f0ccc599d74432cef332459987b
+  altos586-v13-g2.rom    ce25a45cd4fb0ff63e5064fb74347b978c3a78f1
+  altos586-v13.bin       73c10e52c08d8376bccf296473e4d705a66ee399
 
 
 ROM images -- Monitor Version a2.2
@@ -59,10 +59,10 @@ merging is done with merge.pl:
 
 The resulting image includes the string "Monitor Version a2.2".
 
-  Filename               SHA256 Checksum
-  altos586-a22-16349.rom 2e68d268ae016ba4e19da1a773aaa5a61134e80deafb5a815e677113cadc898d
-  altos586-a22-16350.rom f4da2e1364f789672572d8b5c03cddda0a7764e358daf884f5baf4e5ef4df705
-  altos586-a22.bin       85372da96df3c35a87743a72c00ed7613f6f981e04fa1c8e3267a083fbff0239
+  Filename               SHA1 Checksum
+  altos586-a22-16349.rom 1d4ce9aceb7537053ff9dd1f185fab83433d6af7
+  altos586-a22-16350.rom 6a18f4bf486dc06d4e140d22dddb5bc8be619971
+  altos586-a22.bin       e72a79b7464b0e42a33cb4f2555a0e42e6263698
 
 This firmware seems somewhat similar to that of Altos 586T that uses a hard
 drive and a floppy drive (and also a tape drive) on a separate board:
@@ -103,8 +103,8 @@ I'm doing my disassembly with IDA Pro Freeware 5.0. The later freeware
 versions lack the 32-bit x86 support. It is a 32-bit Windows GUI program
 that works fine on Linux via wine.
 
-  Filename      SHA256 Checksum
-  idafree50.exe e3a5e1f2334f68f14f5ee81c3fcc44121cb24f514be78dfc30805ceee0de6029
+  Filename      SHA1 Checksum
+  idafree50.exe d3f90dbde6677ff8ebfee0f0279d93400046816f
 
 Here's a mirror:
 
