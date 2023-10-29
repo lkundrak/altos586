@@ -13,18 +13,22 @@
 #include <unistd.h>
 #include <x86emu.h>
 #include <time.h>
+#include <string.h>
 
-struct termios *orig_tio = NULL;
-x86emu_memio_handler_t orig_memio = NULL;
 x86emu_t *emu;
-int warm = 0;
-int term = 0;
 int hddfd = -1;
-int fddfd = -1;
-unsigned romstart = 0;
+
+static struct termios *orig_tio = NULL;
+static x86emu_memio_handler_t orig_memio = NULL;
+static int warm = 0;
+static int term = 0;
+static int fddfd = -1;
+static unsigned romstart = 0;
+
+void iopattn(x86emu_t *emu);
 
 // 9 sectors/track
-unsigned char bootcode[512] = {
+static unsigned char bootcode[512] = {
 			/*  1			.code16		*/
 0xeb,0x08,		/*  2 0000 EB08			jmp 1f	*/
 			/*  3					*/
@@ -47,103 +51,6 @@ unsigned char bootcode[512] = {
 			/* 10 000d 00000000	. = 0x200	*/
 };
 
-unsigned char iop_xenix[] = {
-0x01, 0x8b,				// 0000: lpd	ga,[pp]
-0x11, 0x20, 0x00, 0xf7,			// 0002: addi	ga,0f700h
-0x31, 0x30, 0x00, 0x00,			// 0006: movi	gb,0h
-0x71, 0x30, 0x00, 0x09,			// 000a: movi	bc,900h
-0xe0, 0x00,				// 000e: wid	16,16
-0xd1, 0x30, 0x08, 0xc0,			// 0010: movi	cc,0c008h
-0x60, 0x00,				// 0014: xfer
-0x00, 0x00,				// 0016: nop
-0x11, 0x30, 0xe0, 0xff,			// 0018: movi	ga,0ffe0h
-0x0a, 0x4c, 0x18, 0x10,			// 001c: movbi	[ga].18h,10h
-0x0a, 0x4c, 0x06, 0x82,			// 0020: movbi	[ga].6h,82h
-0x31, 0x30, 0x48, 0x09,			// 0024: movi	gb,948h
-0x03, 0x8b, 0x08,			// 0028: lpd	ga,[pp].8h
-0x02, 0x90, 0x04, 0x02, 0xcd, 0x21,	// 002b: movb	[gb].21h,[ga].4h
-0x31, 0x30, 0x20, 0x09,			// 0031: movi	gb,920h
-0x03, 0x8b, 0x04,			// 0035: lpd	ga,[pp].4h
-0x02, 0x90, 0x04, 0x02, 0xcd, 0x21,	// 0038: movb	[gb].21h,[ga].4h
-0x31, 0x30, 0x00, 0x09,			// 003e: movi	gb,900h
-0x02, 0x90, 0x00, 0x02, 0xcd, 0x1e,	// 0042: movb	[gb].1eh,[ga].0h
-0x40, 0x00,				// 0048: sintr
-0x20, 0x48				// 004a: hlt
-};
-
-unsigned char iop_fw[] = {
-0x51, 0x30, 0xd0, 0xff,			// 0000:	movi	gc,0ffd0h
-0xaa, 0xbb, 0x04, 0x20,			// 0004:	jnbt	[pp].4h,5,x0028
-0x0a, 0x4e, 0x06, 0x80,			// 0008:	movbi	[gc].6h,80h
-0x02, 0x93, 0x08, 0x02, 0xce, 0x02,	// 000c:	movb	[gc].2h,[pp].8h
-0xea, 0xba, 0x06, 0xfc,			// 0012: x0012:	jnbt	[gc].6h,7,x0012
-0x0a, 0x4e, 0x06, 0x20,			// 0016:	movbi	[gc].6h,20h
-0x13, 0x4f, 0x14, 0x00, 0x00,		// 001a:	movi	[pp].14h,0h
-0x0a, 0xbe, 0x06, 0xfc,			// 001f: x001f:	jbt	[gc].6h,0,x001f
-0x12, 0xba, 0x04, 0xe2, 0x00,		// 0023:	ljnbt	[gc].4h,0,x010a
-0x0a, 0xcb, 0x04, 0x0f,			// 0028: x0028:	andbi	[pp].4h,0fh
-0x12, 0xe7, 0x04, 0xb1, 0x00,		// 002c:	ljzb	[pp].4h,x00e2
-0x02, 0x93, 0x08, 0x02, 0xce, 0x02,	// 0031:	movb	[gc].2h,[pp].8h
-0xea, 0xba, 0x06, 0xfc,			// 0037: x0037:	jnbt	[gc].6h,7,x0037
-0x02, 0x93, 0x14, 0x00, 0xce,		// 003b:	movb	[gc],[pp].14h
-0x02, 0x93, 0x15, 0x00, 0xce,		// 0040:	movb	[gc],[pp].15h
-0x02, 0x93, 0x06, 0x02, 0xce, 0x04,	// 0045:	movb	[gc].4h,[pp].6h
-0x02, 0x93, 0x07, 0x02, 0xce, 0x04,	// 004b:	movb	[gc].4h,[pp].7h
-0x0a, 0x4e, 0x06, 0x10,			// 0051:	movbi	[gc].6h,10h
-0x03, 0x93, 0x06, 0x03, 0xcf, 0x14,	// 0055:	mov	[pp].14h,[pp].6h
-0x0a, 0xbe, 0x06, 0xfc,			// 005b: x005b:	jbt	[gc].6h,0,x005b
-0x2a, 0xba, 0x04, 0xfc,			// 005f: x005f:	jnbt	[gc].4h,1,x005f
-0x0a, 0xe7, 0x10, 0x7b,			// 0063:	jzb	[pp].10h,x00e2
-0x0a, 0xbf, 0x04, 0x0e,			// 0067:	jbt	[pp].4h,0,x0079
-0x03, 0x8b, 0x0c,			// 006b:	lpd	ga,[pp].0ch
-0x31, 0x30, 0x00, 0x00,			// 006e:	movi	gb,0h
-0x63, 0x83, 0x0a,			// 0072:	mov	bc,[pp].0ah
-0x8b, 0x9f, 0x16, 0x70,			// 0075:	call	[pp].16h,x00e9
-0x31, 0x30, 0x00, 0x00,			// 0079: x0079:	movi	gb,0h
-0xf1, 0x30, 0x80, 0xfe,			// 007d:	movi	mc,0fe80h
-0x11, 0x30, 0xd0, 0xff,			// 0081:	movi	ga,0ffd0h
-0x13, 0x4f, 0x12, 0x00, 0x02,		// 0085:	movi	[pp].12h,200h
-0x0a, 0xbb, 0x04, 0x12,			// 008a:	jnbt	[pp].4h,0,x00a0
-0xd1, 0x30, 0x28, 0x8a,			// 008e:	movi	cc,8a28h
-0xa0, 0x00,				// 0092:	wid	8,16
-0x6a, 0xbb, 0x04, 0x17,			// 0094:	jnbt	[pp].4h,3,x00af
-0x13, 0x4f, 0x12, 0x05, 0x02,		// 0098:	movi	[pp].12h,205h
-0x88, 0x20, 0x0f,			// 009d:	jmp	x00af
-0xd1, 0x30, 0x28, 0x56,			// 00a0: x00a0:	movi	cc,5628h
-0xc0, 0x00,				// 00a4:	wid	16,8
-0x4a, 0xbb, 0x04, 0x05,			// 00a6:	jnbt	[pp].4h,2,x00af
-0x13, 0x4f, 0x12, 0x04, 0x00,		// 00aa:	movi	[pp].12h,4h
-0x63, 0x83, 0x12,			// 00af: x00af:	mov	bc,[pp].12h
-0x02, 0x93, 0x09, 0x00, 0xce,		// 00b2:	movb	[gc],[pp].9h
-0x60, 0x00,				// 00b7:	xfer
-0x02, 0x93, 0x04, 0x02, 0xce, 0x06,	// 00b9:	movb	[gc].6h,[pp].4h
-0x0a, 0xb6, 0x06, 0x33,			// 00bf:	jmcne	[gc].6h,x00f6
-0x02, 0xef, 0x10,			// 00c3:	decb	[pp].10h
-0x0a, 0xe7, 0x10, 0x06,			// 00c6:	jzb	[pp].10h,x00d0
-0x02, 0xeb, 0x09,			// 00ca:	incb	[pp].9h
-0x88, 0x20, 0xdf,			// 00cd:	jmp	x00af
-0x0a, 0xbb, 0x04, 0x0e,			// 00d0: x00d0:	jnbt	[pp].4h,0,x00e2
-0x23, 0x8b, 0x0c,			// 00d4:	lpd	gb,[pp].0ch
-0x11, 0x30, 0x00, 0x00,			// 00d7:	movi	ga,0h
-0x63, 0x83, 0x0a,			// 00db:	mov	bc,[pp].0ah
-0x8b, 0x9f, 0x16, 0x07,			// 00de:	call	[pp].16h,x00e9
-0x0a, 0x4f, 0x05, 0x00,			// 00e2: x00e2:	movbi	[pp].5h,0h
-0x88, 0x20, 0x26,			// 00e6:	jmp	x010f
-0xe0, 0x00,				// 00e9: x00e9:	wid	16,16
-0xd1, 0x30, 0x08, 0xc2,			// 00eb:	movi	cc,0c208h
-0x60, 0x00,				// 00ef:	xfer
-0x00, 0x00,				// 00f1:	nop
-0x83, 0x8f, 0x16,			// 00f3:	movp	tp,[pp].16h
-0x02, 0x92, 0x06, 0x02, 0xcf, 0x05,	// 00f6: x00f6:	movb	[pp].5h,[gc].6h
-0x0a, 0xcb, 0x05, 0x7e,			// 00fc:	andbi	[pp].5h,7eh
-0xe2, 0xf7, 0x05,			// 0100:	setb	[pp].5h,7
-0x0a, 0x4e, 0x06, 0x00,			// 0103:	movbi	[gc].6h,0h
-0x88, 0x20, 0x05,			// 0107:	jmp	x010f
-0x13, 0x4f, 0x05, 0x81, 0x00,		// 010a: x010a:	movi	[pp].5h,81h
-0x40, 0x00,				// 010f: x010f:	sintr
-0x20, 0x48				// 0111:	hlt
-};
-
 static void
 flush_log (x86emu_t *emu, char *buf, unsigned size)
 {
@@ -163,26 +70,95 @@ FILE *out = NULL;
 	} while(0)
 //#define xprintf(...) printf(__VA_ARGS__)
 
-static void
-hddread(x86emu_t *emu, unsigned data,
-	unsigned head, unsigned track, unsigned sector, unsigned count)
+/*
+Specify the SYSTEM MODEL number
+(A) ACS586-10 (4hd,306cyl)                 (B) ACS586-20 (6hd,306cyl)
+(C) ACS586-30 (6hd,512cyl)                 (D) ACS586-40 (8hd,512cyl)
+(E) H-H 20 MB (4hd,612cyl)                 (F) Option-your choice
+*/
+
+int hdd_read_sec(int fd, uint8_t data_buf[512], unsigned cyl, unsigned head, unsigned sector);
+int hdd_write_sec(int fd, uint8_t data_buf[512], unsigned cyl, unsigned head, unsigned sector);
+void hdd_read(x86emu_t *emu, unsigned data, unsigned head, unsigned cylinder, unsigned sector, unsigned count);
+void hdd_write(x86emu_t *emu, unsigned data, unsigned head, unsigned cylinder, unsigned sector, unsigned count);
+
+int
+hdd_read_sec(int fd, uint8_t data_buf[512],
+	unsigned cyl, unsigned head, unsigned sector)
 {
-	static const unsigned secs = 9;
-	int tb, lba, len;
-	unsigned char c;
+	int tb, lba;
+	int ret;
+	int br;
+
+	tb = (cyl * 4 + head) * 16;
+	lba = ((tb + sector) << 9);
+
+	xprintf ("HDD READ CYL=%d HEAD=%d SECTOR=%d LBA=%d\n", cyl, head, sector, lba);
+
+	if (lseek(fd, lba, SEEK_SET) == -1) {
+		perror("SEEK_SET");
+		return -1;
+	}
+
+	for (br = 0; br < 512;) {
+		ret = read(fd, data_buf+br, 512-br);
+		switch (ret) {
+		case 0: // EOF
+			fprintf(stderr, "HDD: Short read\n");
+			return -1;
+		case -1:
+			perror("read");
+			return -1;
+		}
+		br += ret;
+	}
+
+	return 0;
+}
+
+int
+hdd_write_sec(int fd, uint8_t data_buf[512],
+	unsigned cyl, unsigned head, unsigned sector)
+{
+	int tb, lba;
+	int ret;
+	int bw;
+
+	tb = (cyl * 4 + head) * 16;
+	lba = ((tb + sector) << 9);
+
+	xprintf ("HDD WRITE CYL=%d HEAD=%d SECTOR=%d LBA=%d\n", cyl, head, sector, lba);
+
+	if (lseek(fd, lba, SEEK_SET) == -1) {
+		perror("SEEK_SET");
+		return -1;
+	}
+
+	for (bw = 0; bw < 512;) {
+		ret = write(fd, data_buf+bw, 512-bw);
+		switch (ret) {
+		case 0: // EOF
+			fprintf(stderr, "HDD: Short write\n");
+			return -1;
+		case -1:
+			perror("write");
+			return -1;
+		}
+		bw += ret;
+	}
+
+	return 0;
+}
+
+void
+hdd_read(x86emu_t *emu, unsigned data,
+	unsigned head, unsigned cylinder, unsigned sector, unsigned count)
+{
+	uint8_t sec_buf[512];
 	int i;
 
-	xprintf ("HDD READ DMAADR=0x%05x HEAD=%d TRACK=%d START=%d COUNT=%d TO=0x%05x\n",
-		data, head, track, sector, count, data);
-
-	if (track != 0 || head != 0)
-		return;
-
-	tb = (track * 2 + head) * secs;
-	lba = ((tb + sector) << 9);
-	len = count * 512;
-
-	xprintf ("  LBA=%d LEN=%d\n", lba, len);
+	xprintf ("HDD READ DMAADR=0x%05x HEAD=%d CYLINDER=%d START=%d COUNT=%d TO=0x%05x\n",
+		data, head, cylinder, sector, count, data);
 
 	if (hddfd == -1) {
 		for (i = 0; i < sizeof(bootcode); i++)
@@ -190,40 +166,54 @@ hddread(x86emu_t *emu, unsigned data,
 		return;
 	}
 
-	if (lseek(hddfd, lba, SEEK_SET) == -1) {
-		perror("SEEK_SET");
-		return;
-	}
-
-	for (i = 0; i < len; i++) {
-		switch (read(hddfd, &c, 1)) {
-		case 0: // EOF
-			fprintf(stderr, "HDD: Short read\n");
-			return;
-		case -1:
-			perror("read");
-			return;
-		default:
-			x86emu_write_byte (emu, data + i, c);
-		}
+	for (i = 0; i < count; i++) {
+		int sec_offset = i % sizeof(sec_buf);
+		if (sec_offset == 0)
+			hdd_read_sec(hddfd, sec_buf, cylinder, head, sector);
+		x86emu_write_byte (emu, data + i, sec_buf[sec_offset]);
 	}
 }
 
+void
+hdd_write(x86emu_t *emu, unsigned data,
+	unsigned head, unsigned cylinder, unsigned sector, unsigned count)
+{
+	uint8_t sec_buf[512];
+	int i;
+
+	xprintf ("HDD READ DMAADR=0x%05x HEAD=%d CYLINDER=%d START=%d COUNT=%d TO=0x%05x\n",
+		data, head, cylinder, sector, count, data);
+
+	if (hddfd == -1) {
+		for (i = 0; i < sizeof(bootcode); i++)
+			x86emu_write_byte (emu, data + i, bootcode[i]);
+		return;
+	}
+
+	for (i = 0; i < count; i++) {
+		int sec_offset = i % sizeof(sec_buf);
+		sec_buf[sec_offset] = x86emu_read_byte (emu, data + i);
+		if (sec_offset == 0)
+			hdd_write_sec(hddfd, sec_buf, cylinder, head, sector);
+	}
+}
+
+
 static void
-fddread(x86emu_t *emu, unsigned data, unsigned secsize,
-	unsigned head, unsigned track, unsigned start, unsigned end)
+fdd_read(x86emu_t *emu, unsigned data, unsigned secsize,
+	unsigned head, unsigned cylinder, unsigned start, unsigned end)
 {
 	static const unsigned secs = 9;
 	int tb, lba, len;
 	unsigned char c;
 	int i;
 
-	tb = (track * 2 + head) * secs;
+	tb = (cylinder * 2 + head) * secs;
 	lba = (tb + (start - 1))*secsize;
 	len = (tb + end)*secsize - lba;
 
-	xprintf ("FDD READ LBA=0x%05x LEN=%d | HEAD=%d TRACK=%d START=%d END=%d SEC=%d TO=0x%05x\n",
-		lba, len, head, track, start, end, secsize, data);
+	xprintf ("FDD READ LBA=0x%05x LEN=%d | HEAD=%d CYLINDER=%d START=%d END=%d SEC=%d TO=0x%05x\n",
+		lba, len, head, cylinder, start, end, secsize, data);
 
 	if (fddfd == -1) {
 		for (i = 0; i < sizeof(bootcode); i++)
@@ -250,167 +240,11 @@ fddread(x86emu_t *emu, unsigned data, unsigned secsize,
 	}
 }
 
-static int
-emueq(x86emu_t *emu, unsigned tp1, const unsigned char iopp[], int size)
-{
-	int i;
-
-	for (i = 0; i < size; i++) {
-		if (x86emu_read_byte(emu, tp1+i) != iopp[i])
-			return 0;
-	}
-	return 1;
-}
-
-static void
-iopattn(x86emu_t *emu)
-{
-	unsigned scb, cb, pb1, pb2, tp1, tp2;
-	//unsigned ptr = 0xffff6;
-
-	scb = x86emu_read_word(emu, 0xffffa) << 4;
-	scb += x86emu_read_word(emu, 0xffff8);
-	xprintf ("==== IO ATTENTION 8089 ==== Bus width = 0x%02x\n", x86emu_read_byte(emu, 0xffff6));
-
-	xprintf ("SCB = 0x%04x (%04x:%04x)\n", scb,
-		x86emu_read_word(emu, 0xffffa),
-		x86emu_read_word(emu, 0xffff8));
-	xprintf ("\n");
-
-	cb = x86emu_read_word(emu, scb + 4) << 4;
-	cb += x86emu_read_word(emu, scb + 2);
-	xprintf ("SCB.SOC = 0x%02x\n", x86emu_read_byte(emu, scb));
-	xprintf ("SCB.CB = 0x%04x (%04x:%04x)\n", cb,
-		x86emu_read_word(emu, scb + 4),
-		x86emu_read_word(emu, scb + 2));
-	xprintf ("\n");
-
-	//cb = x86emu_read_word(emu, cb);
-
-	pb1 = x86emu_read_word(emu, cb + 0 + 4) << 4;
-	pb1 |= x86emu_read_word(emu, cb + 0 + 2);
-	xprintf ("CB1.CCW = 0x%02x\n", x86emu_read_byte(emu, cb + 0 + 0));
-	xprintf ("CB1.BUSY = 0x%02x\n", x86emu_read_byte(emu, cb + 0 + 1));
-	xprintf ("CB1.PB = 0x%04x (%04x:%04x)\n", pb1,
-		x86emu_read_word(emu, cb + 0 + 4),
-		x86emu_read_word(emu, cb + 0 + 2));
-
-	if (pb1) {
-		tp1 = x86emu_read_word(emu, pb1 + 2) << 4;
-		tp1 |= x86emu_read_word(emu, pb1);
-		xprintf ("CB1.PB.TP = 0x%04x (%04x:%04x)\n", tp1,
-			x86emu_read_word(emu, pb1 + 2),
-			x86emu_read_word(emu, pb1));
-
-		if (emueq(emu, tp1, iop_fw, sizeof(iop_fw))) {
-			unsigned cmd, data, head, track, sector, count;
-
-			cmd = x86emu_read_byte(emu, pb1 + 0x04);
-
-			data = x86emu_read_word(emu, pb1 + 0x0e) << 4;
-			data |= x86emu_read_word(emu, pb1 + 0xc);
-
-			head = x86emu_read_byte(emu, pb1 + 0x08) & 0x0f;
-			track = x86emu_read_word(emu, pb1 + 0x06);
-			sector = x86emu_read_byte(emu, pb1 + 0x09);
-			count = x86emu_read_byte(emu, pb1 + 0x10);
-
-			xprintf("Disk I/O Parameter block:\n");
-			xprintf(" 0x%05x 0x00 0x%04x Offset\n", pb1 + 0x00, x86emu_read_word(emu, pb1 + 0x00));
-			xprintf(" 0x%05x 0x02 0x%04x Segment\n", pb1 + 0x02, x86emu_read_word(emu, pb1 + 0x02));
-			xprintf(" 0x%05x 0x04   0x%02x Opcode\n", pb1 + 0x04, cmd);
-			xprintf(" 0x%05x 0x05   0x%02x Status\n", pb1 + 0x05, x86emu_read_byte(emu, pb1 + 0x05));
-			xprintf(" 0x%05x 0x06 0x%04x Cylinder\n", pb1 + 0x06, track);
-			xprintf(" 0x%05x 0x08   0x%02x Drive and head\n", pb1 + 0x08, x86emu_read_byte(emu, pb1 + 0x08));
-			xprintf(" 0x%05x 0x09   0x%02x Start sector\n", pb1 + 0x09, sector);
-			xprintf(" 0x%05x 0x0a 0x%04x Byte count\n", pb1 + 0x0a, x86emu_read_word(emu, pb1 + 0x0a));
-			xprintf(" 0x%05x 0x0c 0x%04x Buffer Offset\n", pb1 + 0x0c, x86emu_read_word(emu, pb1 + 0x0c));
-			xprintf(" 0x%05x 0x0e 0x%04x Buffer Segment\n", pb1 + 0x0e, x86emu_read_word(emu, pb1 + 0x0e));
-			xprintf(" 0x%05x 0x10   0x%02x Sector count\n", pb1 + 0x10, count);
-			xprintf(" 0x%05x 0x11   0x%02x Reserved\n", pb1 + 0x11, x86emu_read_byte(emu, pb1 + 0x11));
-			xprintf(" 0x%05x 0x12 0x%04x Reserved\n", pb1 + 0x12, x86emu_read_word(emu, pb1 + 0x12));
-			xprintf(" 0x%05x 0x14 0x%04x Reserved\n", pb1 + 0x14, x86emu_read_word(emu, pb1 + 0x14));
-			xprintf(" 0x%05x 0x16 0x%04x IN/OUT (Link Register)\n", pb1 + 0x16, x86emu_read_word(emu, pb1 + 0x16));
-
-			x86emu_write_byte(emu, cb + 0 + 1, 0); // Mark channel not busy
-			switch (cmd) {
-			case 0x00:
-				x86emu_write_byte(emu, pb1 + 0x05, 0x00); // io status
-				break;
-			case 0x21:
-				hddread(emu, data, head, track, sector, count);
-				x86emu_write_byte(emu, pb1 + 0x05, 0x00); // io status
-				x86emu_write_byte(emu, pb1 + 0x14, x86emu_read_word(emu, pb1 + 0x06));
-				break;
-			default:
-				printf("HD COMMAND %02x\n", cmd);
-				x86emu_stop (emu);
-			}
-		} else if (emueq(emu, tp1, iop_xenix, sizeof(iop_xenix))) {
-			printf("XENIX IOP IO\n");
-			x86emu_stop (emu);
-		} else {
-			int i;
-			unsigned char pc = 0;
-			unsigned char c;
-
-			printf ("UNKNOWN 8089 CB1.PB.TP AT 0x%04x (%04x:%04x):\n", tp1,
-				x86emu_read_word(emu, pb1 + 2),
-				x86emu_read_word(emu, pb1));
-			for (i = 0; i < 0x200; i++) {
-				c = x86emu_read_byte(emu, tp1+i);
-				printf("%02x ", c);
-				if (pc == 0x20 && c == 0x48) // hlt
-					break;
-				pc = c;
-			}
-			printf("\n");
-
-			printf ("CB1.PB AT 0x%04x (%04x:%04x):\n", pb1,
-				x86emu_read_word(emu, cb + 0 + 4),
-				x86emu_read_word(emu, cb + 0 + 2));
-
-			for (i = 0; i < 0x200; i++) {
-				c = x86emu_read_byte(emu, pb1+i);
-				printf("%02x ", c);
-				if (pc == 0x20 && c == 0x48) // hlt
-					break;
-				pc = c;
-			}
-			printf("\n");
-			x86emu_stop (emu);
-		}
-	}
-
-	xprintf ("\n");
-
-
-
-	pb2 = x86emu_read_word(emu, cb + 8 + 4) << 4;
-	pb2 |= x86emu_read_word(emu, cb + 8 + 2);
-	xprintf ("CB2.CCW = 0x%02x\n", x86emu_read_byte(emu, cb + 8 + 0));
-	xprintf ("CB2.BUSY = 0x%02x\n", x86emu_read_byte(emu, cb + 8 + 1));
-	xprintf ("CB2.PB = 0x%04x (%04x:%04x)\n", pb2,
-		x86emu_read_word(emu, cb + 8 + 4),
-		x86emu_read_word(emu, cb + 8 + 2));
-	if (pb2) {
-		tp2 = x86emu_read_word(emu, pb2 + 2) << 4;
-		tp2 |= x86emu_read_word(emu, pb2);
-		xprintf ("CB2.PB.TP = 0x%04x (%04x:%04x)\n", tp2,
-			x86emu_read_word(emu, pb2 + 2),
-			x86emu_read_word(emu, pb2));
-	}
-
-	xprintf ("\n");
-
-	//x86emu_stop (emu);
-	//exit(0);
-}
-
+// altos586-a22.bin firmware, presumably with Z80 based hdd board
 static void
 cpuint1_hdd(x86emu_t *emu)
 {
-	unsigned track, head, sector, count;
+	unsigned cylinder, head, sector, count;
 	unsigned ptr, data, cmd;
 
 	xprintf("============== CPUINT1 HDD =========\n");
@@ -421,7 +255,7 @@ cpuint1_hdd(x86emu_t *emu)
 	cmd = x86emu_read_byte(emu, ptr + 0);
 
 	head = x86emu_read_byte(emu, ptr + 6) & 0x1f;
-	track = x86emu_read_word(emu, ptr + 2);
+	cylinder = x86emu_read_word(emu, ptr + 2);
 	sector = x86emu_read_byte(emu, ptr + 4);
 
 	count = x86emu_read_byte(emu, ptr + 5);
@@ -433,7 +267,7 @@ cpuint1_hdd(x86emu_t *emu)
 	xprintf ("   0 0x%04x   0x%02x COMMAND\n", ptr + 0, x86emu_read_byte(emu, ptr + 0));
 	xprintf ("   1 0x%04x   0x%02x BUSY\n", ptr + 1, x86emu_read_byte(emu, ptr + 1));
 
-	xprintf ("   2 0x%04x 0x%04x TRACK\n", ptr + 2, x86emu_read_word(emu, ptr + 2));
+	xprintf ("   2 0x%04x 0x%04x CYLINDER\n", ptr + 2, x86emu_read_word(emu, ptr + 2));
 
 
 	xprintf ("   4 0x%04x   0x%02x SECTOR\n", ptr + 4, x86emu_read_byte(emu, ptr + 4));
@@ -462,7 +296,7 @@ cpuint1_hdd(x86emu_t *emu)
 		break;
 	case 0x2c:
 		//x86emu_write_byte (emu, ptr + 13, 0xee); //Boot Failed, Status=EE*
-		hddread(emu, data, head, track, sector, count);
+		hdd_read(emu, data, head, cylinder, sector, count);
 		x86emu_write_byte (emu, ptr + 13, 0x0); // sukces
 		break;
 	default:
@@ -480,14 +314,14 @@ static void
 cpuint2_floppy(x86emu_t *emu)
 {
 	unsigned ptr, data, cmd;
-	unsigned track, head, start, end, secsize;
+	unsigned cylinder, head, start, end, secsize;
 
 	ptr = x86emu_read_word(emu, 0x406) << 4;
 	ptr += x86emu_read_word(emu, 0x404);
 
 	cmd = x86emu_read_byte(emu, ptr + 0);
 
-	track = x86emu_read_byte(emu, ptr + 2);
+	cylinder = x86emu_read_byte(emu, ptr + 2);
 	head = x86emu_read_byte(emu, ptr + 3);
 	start = x86emu_read_byte(emu, ptr + 4);
 	secsize = x86emu_read_byte(emu, ptr + 5);
@@ -499,7 +333,7 @@ cpuint2_floppy(x86emu_t *emu)
 	xprintf("============== CPUINT2 FLOPPY =========\n");
 	xprintf ("   0 0x%04x 0x%02x COMMAND\n", ptr + 0, x86emu_read_byte(emu, ptr + 0));
 	xprintf ("   1 0x%04x 0x%02x BUSY?\n", ptr + 1, x86emu_read_byte(emu, ptr + 1));
-	xprintf ("   2 0x%04x 0x%02x TRACK? (0-5)\n", ptr + 2, x86emu_read_byte(emu, ptr + 2));
+	xprintf ("   2 0x%04x 0x%02x CYLINDER? (0-5)\n", ptr + 2, x86emu_read_byte(emu, ptr + 2));
 	xprintf ("   3 0x%04x 0x%02x HEAD? (0,1)\n", ptr + 3, x86emu_read_byte(emu, ptr + 3));
 	xprintf ("   4 0x%04x 0x%02x START SECTOR (01,02)\n", ptr + 4, x86emu_read_byte(emu, ptr + 4));    // start sector?
 	xprintf ("   5 0x%04x 0x%02x SECTOR SIZE/256 (02)\n", ptr + 5, x86emu_read_byte(emu, ptr + 5));       // sector size / 256
@@ -523,7 +357,7 @@ cpuint2_floppy(x86emu_t *emu)
 	switch (cmd) {
 	case 0x46:
 		if (data) {
-			fddread(emu, data, 256*secsize, head, track, start, end);
+			fdd_read(emu, data, 256*secsize, head, cylinder, start, end);
 			//Boot Failed, Status=EE*
 			//x86emu_write_byte (emu, ptr + 13, 0xee);
 			x86emu_write_byte (emu, ptr + 13, 0x00); // status 0=good
@@ -605,8 +439,10 @@ out:
 static void
 trytx (x86emu_t *emu, unsigned ptr)
 {
-	unsigned txbuf;
+	char strbuf[65535];
 	unsigned char len;
+	unsigned txbuf;
+	int strl = 0;
 	char c;
 	int i;
 
@@ -620,19 +456,26 @@ trytx (x86emu_t *emu, unsigned ptr)
 
 	xprintf("TX: {len=%d, buf=0x%x}\n", len, txbuf);
 
-	fprintf(stderr, "EMU: OUT: {len=%d, buf=0x%x}", len, txbuf);
+	strl += snprintf(&strbuf[strl], sizeof(strbuf) - strl,
+		"EMU: OUT: {len=%d, buf=0x%x}", len, txbuf);
+			
 	for (i = 0; i < len; i++) {
 		c = x86emu_read_byte (emu, txbuf + i);
 		putchar(c);
 		emu->max_instr += 10000;
-		fprintf (stderr, "{%02x} ", c);
+		//fprintf (stderr, "{%02x} ", c);
+		strl += snprintf(&strbuf[strl], sizeof(strbuf) - strl, "{%02x} ", c);
 	}
-	fprintf (stderr, "| ");
-	for (i = 0; i < len; i++) {
+	//fprintf (stderr, "| ");
+	strl += snprintf(&strbuf[strl], sizeof(strbuf) - strl, "| ");
+	for (i = 0; i < len && strl < sizeof(strbuf); i++) {
 		c = x86emu_read_byte (emu, txbuf + i);
-		putc (isalnum(c) ? c : '.', stderr);
+		//putc (isalnum(c) ? c : '.', stderr);
+		strl += snprintf(&strbuf[strl], sizeof(strbuf) - strl, "%c",
+			isalnum(c) ? c : '.');
 	}
-	fprintf(stderr, "\n");
+	xprintf("%s\n", strbuf);
+
 	fflush(stderr);
 	fflush(stdout);
 }
@@ -751,11 +594,11 @@ static int
 fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 {
 	unsigned cmd = x86emu_read_byte(emu, ptr + 0);
-	int track, head, sec;
+	int cylinder, head, sec;
 	unsigned ptr2;
 	int secsize;
 
-	track = x86emu_read_byte(emu, ptr + 3);
+	cylinder = x86emu_read_byte(emu, ptr + 3);
 	head = x86emu_read_byte(emu, ptr + 4);
 	sec = x86emu_read_byte(emu, ptr + 5);
 
@@ -766,7 +609,7 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 	xprintf ("        0 0x%04x       0x%02x Command Register?\n",	ptr + 0, cmd);
 	xprintf ("        1 0x%04x       0x%02x Status Register?\n",	ptr + 1, x86emu_read_byte(emu, ptr + 1));
 	xprintf ("        2 0x%04x       0x%02x\n",			ptr + 2, x86emu_read_byte(emu, ptr + 2));
-	xprintf ("        3 0x%04x       0x%02x Track\n",			ptr + 3, track);
+	xprintf ("        3 0x%04x       0x%02x Track\n",			ptr + 3, cylinder);
 	xprintf ("        4 0x%04x       0x%02x Head\n",			ptr + 4, head);
 	xprintf ("        5 0x%04x       0x%02x Sector\n",		ptr + 5, sec);
 	xprintf ("        6 0x%04x   0x%06x Data Buffer\n", ptr + 6, ptr2);
@@ -783,7 +626,7 @@ fcmd(x86emu_t *emu, unsigned ptr, int printonly, unsigned char fdparms[])
 		secsize |= fdparms[3] << 8;
 		xprintf ("        READ SECTOR (secsize=%d)\n", secsize);
 
-		fddread(emu, ptr2, secsize, head, track, sec, sec);
+		fdd_read(emu, ptr2, secsize, head, cylinder, sec, sec);
 		x86emu_write_byte(emu, ptr + 1, 0x00); // status = success
 		// read sector
 		return 0;
@@ -928,44 +771,63 @@ static unsigned ch1_ptr = 0;
 static void
 tryrx (void)
 {
+	static int in_tryrx = 0;
 	unsigned rxptr;
-	unsigned inptr;
+	unsigned inptr = 0;
+	unsigned outptr = 0;
+	unsigned buflen = 0;
 	int c;
 
-	c = getchar();
-	if (c == EOF) {
-		if (errno != EAGAIN) {
-			perror("getchar");
-			x86emu_stop (emu);
+	if (in_tryrx)
+		return;
+	in_tryrx = 1;
+
+	while (1) {
+		c = getc(stdin);
+		if (c == EOF) {
+			if (errno != EAGAIN) {
+				perror("getchar");
+				x86emu_stop (emu);
+			}
+			break;
 		}
-	} else {
+
+		if (c == '\n')
+			c = '\r';
+
 		// characters available
 		x86emu_write_word(emu, ch1_ptr + 2, x86emu_read_word(emu, ch1_ptr + 2) | 0x0100);
 
-		if (x86emu_read_word(emu, ch1_ptr + 0) & 0x0080) {
+		if (x86emu_read_word(emu, ch1_ptr + 0) & 0x0080) { // buffered?
 			/* Ring buffer input */
+			buflen = x86emu_read_word(emu, ch1_ptr + 13); // length
 			inptr = x86emu_read_word(emu, ch1_ptr + 15); // input pointer
+			outptr = x86emu_read_word(emu, ch1_ptr + 17); // output pointer
 
 			/* rx buffer addr */
 			rxptr = x86emu_read_byte(emu, ch1_ptr + 12) << 16; // buffer addr hi
 			rxptr |= x86emu_read_word(emu, ch1_ptr + 10); // buffer addr lo
 			rxptr += inptr;
 
-			fprintf(stderr, "EMU: IN: {0x%x} {0x%02x}\n", rxptr, c);
-			if (c == '\n')
-				c = '\r';
-			x86emu_write_byte(emu, rxptr, c);
+			inptr = (inptr + 1) % buflen;
 
-			inptr++;
-			if (inptr >= x86emu_read_byte(emu, ch1_ptr + 13)) // length
-				inptr = 0; /* wrap around */
+			if (inptr == outptr) {
+				ungetc(c, stdin);
+				//xprintf("EMU: WRAP FULL\n");
+				break;
+			}
+
+			xprintf("EMU: IN: {0x%x} {0x%02x}\n", rxptr, c);
+			x86emu_write_byte(emu, rxptr, c);
 			x86emu_write_word(emu, ch1_ptr + 15, inptr); // input pointer
 		} else {
 			/* Unbuffered input */
-			fprintf(stderr, "EMU: IN: {unbuffered} {0x%02x}\n", c);
+			xprintf("EMU: IN: {unbuffered} {0x%02x}\n", c);
 			x86emu_write_byte(emu, ch1_ptr + 18, c);
 		}
 	}
+
+	in_tryrx = 0;
 }
 
 
@@ -1139,12 +1001,11 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			// MMU
 			if (addr >= 0x200 && addr < 0x400 && (addr & 1) == 0) {
 				uint32_t base = (addr & 0x1ff) << 11;
-				uint32_t target = (*val & 0xff) << 12;
 				char flags[9];
 
 				mmuflags(flags, *val);
-				xprintf ("MMU READ16 0x%04x -> 0x%04x [base=%05x target=%05x flags=%s]\n",
-					addr, *val, base, target, flags);
+				xprintf ("MMU READ16 0x%04x -> 0x%04x [base=%05x flags=%s]\n",
+					addr, *val, base, flags);
 				*val = mmu[(addr >> 1) & 0xff];
 				return 0;
 			}
@@ -1196,11 +1057,13 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 		case 0xff00: // <- 0x03
 			// "Reserved for system bus I/O."
 			xprintf ("WRITE8 0x%04x <- 0x%02x (8089 interrupt?)\n", addr, *val);
+			// altos586-v13.bin, with 8089-based hdd controller
 			iopattn(emu);
 			return 0;
 
 		case 0xff04: // <- 0x00
 			// UNKNOWN XENIX
+			// perhaps second channel attention or something
 			xprintf ("BAD WRITE8 0x%04x <- 0x%02x (XENIX)\n", addr, *val);
 			//iopattn(emu);
 			return 0;
@@ -1237,6 +1100,10 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 			xprintf ("WRITE8 0x%04x <- 0x%02x PIT - Counter 0\n", addr, *val);
 			return 0;
 
+		case 0x55:
+			printf ("SECTORS 0x%04x <- 0x%02x\n", addr, *val);
+			break;
+
 		default:
 			printf ("BAD WRITE8 0x%04x <- 0x%02x\n", addr, *val);
 			x86emu_stop (emu);
@@ -1248,51 +1115,59 @@ memio_handler(x86emu_t *emu, u32 addr, u32 *val, unsigned type)
 		switch (addr) {
 		case 0x0040: // 0x00
 			// UNKNOWN_PORT_40 xenix
-			xprintf ("WRITE16 0x%04x <- 0x%02x XENIX UNKNOWN PORT\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x XENIX UNKNOWN PORT\n", addr, *val);
 			return 0;
 		case 0x0070: // 0x00
 			// MMU - Clear Violation Port ?
-			xprintf ("WRITE16 0x%04x <- 0x%02x XENIX UNKNOWN PORT\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x XENIX UNKNOWN PORT\n", addr, *val);
 			return 0;
 
 		case 0x0050:
 			// Z80 on main board
 			// Z80A I/O Processor Chan att.
-			xprintf ("WRITE16 0x%04x <- 0x%02x (serial interrupt Z80 on CPU board) Z80A I/O Processor Chan att.\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x (serial interrupt Z80 on CPU board) Z80A I/O Processor Chan att.\n", addr, *val);
 			z80attn(emu);
 			return 0;
 		case 0x0058: /* <- 0x100 */
 			// Control Bits Port - Write Only.
-			xprintf ("WRITE16 0x%04x <- 0x%02x Control Bits Port\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x Control Bits Port\n", addr, *val);
 			return 0;
 		case 0x7000: /* - 0x7007 */
 			/* 586T: "Requests hard disk or memory-to-memory operation" */
 			/* Descriptor pointer at 400H */
-			xprintf ("WRITE16 0x%04x <- 0x%02x (hard disk interrupt Z80 on controller board) CPUINT1\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x (hard disk interrupt Z80 on controller board) CPUINT1\n", addr, *val);
+			// altos586-a22.bin firmware, presumably with Z80 based hdd board
 			cpuint1_hdd(emu);
 			return 0;
 		case 0x7008: /* - 0x700F */
 			/* 586T: "Requests floppy disk operation" */
 			/* 586: "Requests floppy disk operation" */
 			/* Descriptor pointer at 404H */
-			xprintf ("WRITE16 0x%04x <- 0x%02x (floppy interrupt Z80 on CPU board) CPUINT2\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x (floppy interrupt Z80 on CPU board) CPUINT2\n", addr, *val);
 			cpuint2_floppy(emu);
 			return 0;
 		case 0x7010: /* - 0x7017 */
 			/* 586T: "Requests tape operation" */
 			/* Descriptor pointer at 408H */
-			printf ("WRITE16 0x%04x <- 0x%02x (tape interrupt on controller board?) CPUINT3\n", addr, *val);
+			printf ("WRITE16 0x%04x <- 0x%04x (tape interrupt on controller board?) CPUINT3\n", addr, *val);
 			x86emu_stop (emu);
 			return 0;
+
+		case 0xff01: // <- 0x40c
+			/* Tape diags issues this */
+			printf ("WRITE16 0x%04x <- 0x%04x (tape interrupt)\n", addr, *val);
+			xprintf ("WRITE16 0x%04x <- 0x%04x (tape interrupt)\n", addr, *val);
+			return 0;
+
 		default:
 			// MMU
 			if (addr >= 0x200 && addr < 0x400 && (addr & 1) == 0) {
 				uint32_t base = (addr & 0x1ff) << 11;
 				uint32_t target = (*val & 0xff) << 12;
-				char flags[9];
+				char flags[9] = { 0, };
 
 				mmuflags(flags, *val);
-				xprintf ("MMU WRITE16 0x%04x <- 0x%02x [base=%05x target=%05x flags=%s]\n",
+				xprintf ("MMU WRITE16 0x%04x <- 0x%04x [base=%05x target=%05x flags=%s]\n",
 					addr, *val, base, target, flags);
 				mmu[(addr >> 1) & 0xff] = *val;
 				return 0;
@@ -1415,6 +1290,49 @@ sighup1 (int signum)
 	signal(SIGHUP, sighup2);
 }
 
+static int
+opendisk (const char *fname)
+{
+	struct stat statbuf;
+	int fd;
+
+	fd = open(fname, O_RDWR);
+	if (fd == -1) {
+		perror(fname);
+		return 1;
+	}
+
+	if (fstat (fd, &statbuf) == -1) {
+		perror(fname);
+		return 1;
+	}
+
+	switch (statbuf.st_size) {
+	case 1440*512:
+		if (fddfd != -1) {
+			fprintf(stderr, "Floppy already specified.");
+			return 1;
+		}
+		fddfd = fd;
+		break;
+	case 306*4*16*512:
+		if (hddfd != -1) {
+			fprintf(stderr, "Hard Driver already specified.");
+			return 1;
+		}
+		hddfd = fd;
+		break;
+	default:
+		fprintf(stderr, "Wrong disk size: %ld\n", statbuf.st_size);
+		return 1;
+	}
+
+	return 0;
+}
+
+
+
+
 int
 main (int argc, char *argv[])
 {
@@ -1431,7 +1349,7 @@ main (int argc, char *argv[])
 	//out = stderr;
 	//out = stdout;
 
-	if (argc != 2 && argc != 3) {
+	if (argc < 2 || argc > 4) {
 		fprintf (stderr, "Usage: %s <rom> [<floppy>]\n", argv[0]);
 		return 1;
 	}
@@ -1439,7 +1357,7 @@ main (int argc, char *argv[])
 	emu = x86emu_new (X86EMU_PERM_R | X86EMU_PERM_W | X86EMU_PERM_X, 0);
 
 	//x86emu_set_log (emu, 1000000, flush_log);
-	x86emu_set_log (emu, 10000000, flush_log);
+	x86emu_set_log (emu, 100000000, flush_log);
 
 	x86emu_set_seg_register (emu, emu->x86.R_CS_SEL, 0xf000);
 	emu->x86.R_IP = 0xfff0;
@@ -1461,7 +1379,7 @@ main (int argc, char *argv[])
 		romstart = 0xfc000;
 		break;
 	default:
-		fprintf(stderr, "Wrong file size: %ld\n", statbuf.st_size);
+		fprintf(stderr, "Wrong ROM size: %ld\n", statbuf.st_size);
 		return 1;
 	}
 	for (addr = romstart; addr <= 0xfffff; addr++) {
@@ -1480,16 +1398,49 @@ main (int argc, char *argv[])
 	}
 	close (f);
 
-
-	if (argc == 3) {
-		fddfd = open(argv[2], O_RDONLY);
-		if (fddfd == -1) {
-			perror(argv[2]);
+	if (argc > 2) {
+		if (opendisk(argv[2]))
 			return 1;
-		}
 	}
 
+	if (argc > 3) {
+		if (opendisk(argv[3]))
+			return 1;
+	}
 
+if (0) {
+	uint8_t data_buf[512];
+	int i;
+
+	out = stdout;
+
+	hdd_read_sec(hddfd, data_buf, 0, 0, 1);
+	for (i = 0; i < sizeof(data_buf); i++) {
+		fprintf (out, "%02x%c", data_buf[i], (i+1) % 32 ? ' ' : '\n');
+		if ((i+17) % 32 == 0)
+			putc(' ', stdout);
+	}
+
+	for (i = 0; i < sizeof(data_buf); i++) {
+		data_buf[i] = 0x5a;
+	}
+
+	hdd_write_sec(hddfd, data_buf, 0, 0, 1);
+	for (i = 0; i < sizeof(data_buf); i++) {
+		fprintf (out, "%02x%c", data_buf[i], (i+1) % 32 ? ' ' : '\n');
+		if ((i+17) % 32 == 0)
+			putc(' ', stdout);
+	}
+
+	hdd_read_sec(hddfd, data_buf, 0, 0, 1);
+	for (i = 0; i < sizeof(data_buf); i++) {
+		fprintf (out, "%02x%c", data_buf[i], (i+1) % 32 ? ' ' : '\n');
+		if ((i+17) % 32 == 0)
+			putc(' ', stdout);
+	}
+		
+	return 1;
+}
 
 	orig_memio = x86emu_set_memio_handler(emu, memio_handler);
 	//x86emu_reset_access_stats (emu);
@@ -1502,11 +1453,8 @@ main (int argc, char *argv[])
 	if (getenv("DEBUG"))
 		debug = 1;
 
-	if (debug) {
+	if (debug)
 		emu->log.trace = X86EMU_TRACE_DEFAULT;
-	} else {
-		out = stderr;
-	}
 
 	if (tcgetattr(STDIN_FILENO, &tio) == -1) {
 		perror("tcgetattr");

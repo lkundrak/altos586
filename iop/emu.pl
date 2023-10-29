@@ -660,11 +660,11 @@ while (1) {
 
 			$busmem{0x41b}++; # New Command Register
 		}
-		#if ($init == 20) {
-		#	trace '=== INITIALIZE CHANNEL 0 ===';
-		#	chcmd(0);
-		#	$busmem{0x41b}++; # New Command Register
-		#}
+		if ($insncnt == 50000) {
+			trace '=== INITIALIZE CHANNEL 0 ===';
+			chcmd(0);
+			$busmem{0x41b}++; # New Command Register
+		}
 		#if ($init == 50) {
 		#	trace '=== INITIALIZE CHANNEL 1 ===';
 		#	#chcmd(1);
@@ -675,7 +675,7 @@ while (1) {
 		#	$busmem{0x4ea} = 0x81; # RTC!
 		#	$busmem{0x41b}++; # New Command Register
 		#}
-		if ($insncnt == 50000) {
+		if (0 && $insncnt == 50000) {
 		#if ($init == 100) {
 			trace '=== FDC UNK 0 ===';
 
@@ -776,7 +776,7 @@ while (1) {
 		#            addr
 		#           RWx RWx RWx RWx RWx RWx RWx RWx rWx rWx RWx RWx rWx rWx rWx rWx
 
-		if ($insncnt == 300000) {
+		if (0 && $insncnt == 300000) {
 			trace '=== FDC UNK 0 ===';
 
 			foreach (0..10) {
