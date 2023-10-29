@@ -1,4 +1,12 @@
 ;------------------------------------------------------------------------
+; 8089 Transfer configurations.						:
+;------------------------------------------------------------------------
+
+PORT_TO_BLK	EQU 08A28H ; Port GA to memory GB
+BLK_TO_PORT	EQU 05628H ; Memory GB to port GA
+BLK_TO_BLK	EQU 0C208H ; Memory GA to memory GB
+
+;------------------------------------------------------------------------
 ; Program parameters, passed by the user.				:
 ;------------------------------------------------------------------------
 
@@ -113,9 +121,9 @@ HDD_SRAM_XFER:	movi  gb,HDD_SRAM_ADDR
 		movi  ga,HDD_REGS_ADDR+PORT_DATA
 		movi  [pp].IOPB_IO_SIZE,512
 
-		; A read or write?
+		; A read? Setup for SRAM (GA) to HDD (GB) transfer.
 		jnbt  [pp].IOPB_OP,OP_BIT_RD,XFER_WR
-		movi  cc,8A28H ; A read. Setup for SRAM to HDD transfer.
+		movi  cc,PORT_TO_BLK
 		wid   8,16
 
 		; Add 5 bytes if ECC requested.
@@ -124,7 +132,7 @@ HDD_SRAM_XFER:	movi  gb,HDD_SRAM_ADDR
 		jmp   XFER_SEC
 
 		; A write. Setup for transfer from SRAM to HDD.
-XFER_WR:	movi  cc,5628H
+XFER_WR:	movi  cc,BLK_TO_PORT
 		wid   16,8
 		jnbt  [pp].IOPB_OP,OP_BIT_FORMAT,XFER_SEC
 		movi  [pp].IOPB_IO_SIZE,4 ; Sector header
@@ -158,13 +166,13 @@ RETURN_00H:	movbi [pp].IOPB_STATUS,0
 		jmp   DONE
 
 ;------------------------------------------------------------------------
-; A subroutine that does a memory-to memory transfer.			:
+; A subroutine that does a block-to-block transfer.			:
 ; Used to copy data between the controller SRAM and the DMA buffer in	:
 ; main memory, in either direction.					:
 ;------------------------------------------------------------------------
 
 MEM_SRAM_XFER:	wid   16,16
-		movi  cc,0C208H
+		movi  cc,BLK_TO_BLK
 		xfer
 		nop
 		movp  tp,[pp].IOPB_LINK_REG
