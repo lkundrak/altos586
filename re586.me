@@ -863,6 +863,30 @@ congesting the system bus. It is also connected to the main memory
 via the system bus, allowing for efficient DMA transfers of the
 sector data.
 
+.PS
+box width 1 height 0.8 "\fC00000h\fP" "16K SRAM" "Memory"
+line; down; line
+MID: line; left; line
+box width 1 height 0.8 "\fC0ff00h\fP" "Disk Controller" "Registers"
+right
+line 0.6 at MID; "I/O Space" above; line 0.6
+box width 1 "8089" "I/O Processor"
+line 0.6; "Memory Space" above; line 0.6
+MEM:
+up; line at MEM
+box dashed width 1 "DRAM" "Main Memory"
+down; line 0.8 at MEM
+left
+DOWN:
+line 0.6; "Memory Space" above; line 0.6
+box dashed width 1 "8086" "Main Processor"
+down; line at DOWN
+"Memory Bus" below
+.PE
+
+.bp
+.sh 2 "I/O Programs"
+
 The 8089 is controlled with specialized programs placed in the main
 memory and synchronized with the main CPU with interrupts.
 
