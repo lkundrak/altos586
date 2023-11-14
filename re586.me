@@ -1,11 +1,11 @@
 .\" SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.\" groff -P-pa4 -p -t -me -Tpdf re586.me >re586.pdf
+.\" groff -P-pa4 -pe -t -me -Tpdf re586.me >re586.pdf
 .he 'Notes on the Altos 586 Computer''%'
 .+c
 .(l C
 .b "Notes on the Altos 586 Computer"
 .sp  2
-Work in progress, April 2023
+Work in progress, November 2023
 by Lubomir Rintel
 .)l
 .sp  2
@@ -851,15 +851,159 @@ O - write I/O port
 >
 .ft R
 
+.bp
+.sh 1 "Hard Drive Format"
 
+The 586T manual is fairly vague and incorrect about the hard drive
+formatting. The illustration seem to be taken from a hard drive manual
+and doesn't take specifics of the 586's controller into account.
+In particular, the gap sizes are wrong and there's a mention of
+4-byte ECC where in reality a 16-bit CRC is used.
+
+Other than that, the drive formatting resembles what has been common
+on drives of the era. It uses MFM encoding as has been common on
+contemporary hard drives and indeed roughly the same as on floppies
+since IBM 53FD. In fact, the IBM 53FD manual provides a good
+description of the overall format.
+
+Here's a more accurate picture (observed on a drive formatted on
+a 586 system):
+
+.PS
+box width 1.2 height 0.6 "\fC4Eh\fP" "319 bytes (or so)" "Gap"
+move 0.06
+SDB: box width 1.2 height 0.6 dashed "Sector Data" "repeated" "16 times"
+
+down
+line right 3.44 down 0.3 dashed at SDB .se
+line left 1.7 down 0.3 dashed at SDB .sw
+move 0.3; right;
+
+box width 0.6 height 0.6 "\fC00h\fP" "14 bytes" "Sync"
+move 0.06
+box width 0.6 height 0.6 "\fCA1h\fP-" "Address" "Mark"
+box width 0.6 height 0.6 "\fCFEh\fP" "Ident" "Field"
+box width 0.6 height 0.6 "\fCxxh\fP" "Cylinder" "Low"
+box width 0.6 height 0.6 "\fCxxh\fP" "Head &" "Cyl Hi"
+box width 0.6 height 0.6 "\fC0xh\fP" "Sector" "Number"
+box width 0.7 height 0.6 "\fCxxh\fP \fCxxh\fP" "2 bytes" "Ident CRC"
+move 0.06
+box width 0.6 height 0.6 "\fC00h\fP" "11 bytes" "Gap"
+move 0.06
+DTB: box width 0.6 height 0.6 dashed "Data" "Splice"
+move 0.06
+box width 0.6 height 0.6 "\fC4Eh\fP" "66 bytes" "Gap"
+
+down
+line right 0.48 down 0.3 dashed at DTB .se
+line left 4 down 0.3 dashed at DTB .sw
+move 0.3; right;
+
+box width 0.6 height 0.6 "\fC00h\fP" "14 bytes" "Sync"
+move 0.06
+box width 0.6 height 0.6 "\fCA1h\fP-" "Address" "Mark"
+move 0.06
+box width 0.6 height 0.6 "\fCF8h\fP" "Ident" "Field"
+box width 1.8 height 0.6 "\fCxxh\fP" "512 bytes" "Data"
+box width 0.7 height 0.6 "\fCxxh\fP \fCxxh\fP" "2 bytes" "Data CRC"
+move 0.06
+box width 0.6 height 0.6 "\fC00h\fP" "3 bytes" "Gap"
+.PE
+
+Just as with about any MFM-encoded floppy or a hard drive, the \fCA1h\fP
+address mark byte is encoded with an error. It lacks the clock pulse
+between the fifth and sixth data bit, even though both are zero.
+This is used to synchronize the decoding logic.
+
+The regular CRC-16-CCITT algorithm\** is used to calculate the content
+of the CRC fields. Note that the Ident CRC is calculated from all bytes
+including the \fCA1h\fP address mark, whereas the Data CRC calculation
+starts with the \fCF8h\fP identifiaction field.
+
+The gaps are quite a bit larger than usual. As a result, less useful
+data fits on a track\(em16 sectors of 512 bytes compared to more usual 17.
+
+The falling slope of the (active-low)
+.i "Index"
+signal happens
+sometime during the first gap.
+
+The overall structure is created during the formatting.
+On write, the data along with surrounding patterns are spliced
+between two gaps while the (active-low)
+.i "Write Gate"
+signal is asserted. The timing doesn't have to be completely
+precise as the surrounding gaps provide some "wiggle room."
+.EQ
+delim $$
+.EN
+.(f
+\**
+Initialized with value of 0FFFFh, using the
+$x sup 16 + x sup 12 + x sup 5 + x sup 0$ generator polynomial,
+MSB first
+.)f
+.EQ
+delim off
+.EN
 
 .bp
+.sh 2 "Track dump"
+
+Below is a hex dump of decoded MFM stream of a part of a track as it looks
+immediatelly after formatting. The data bytes are all \fCE5h\fP.
+
+The start is arbitrary, not synchronized on the
+.i Index
+signal. In fact, it begins right after the last sector passed under the head
+and a new platter revolution began.
+
+The address mark bytes are highlighted in bold font.
+
+.ft CW
+0000  4e 4e 4e 4e 4e 4e 4e 4e  4e 4e 4e 4e 4e 4e 4e 4e  \f[I]Initial gap\f[]
+.br
+*
+.br
+0130  4e 4e 4e 4e 4e 4e 4e 4e  4e 4e 4e 4e 4e 4e 4e 00  \f[I]\f[]
+.br
+0140  00 00 00 00 00 00 00 00  00 \f[CB]a1\f[] fe 00 00 00 b9 d7  \f[I]The CHS 0,0,0 ident\f[]
+.br
+0150  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  \f[I]\f[]
+.br
+0160  \f[CB]a1\f[] f8 e5 e5 e5 e5 e5 e5  e5 e5 e5 e5 e5 e5 e5 e5  \f[I]Data of CHS 0,0,0 sector\f[]
+.br
+0170  e5 e5 e5 e5 e5 e5 e5 e5  e5 e5 e5 e5 e5 e5 e5 e5  \f[I]\f[]
+.br
+*
+.br
+0360  e5 e5 08 51 00 00 00 00  4e 4e 4e 4e 4e 4e 4e 4e  \f[I]Sector end, CRC and gap\f[]
+.br
+0370  4e 4e 4e 4e 4e 4e 4e 4e  4e 4e 4e 4e 4e 4e 00 00  \f[I]\f[]
+.br
+0380  00 00 00 00 00 00 00 00  00 00 00 00 00 \f[CB]a1\f[] fe 00  \f[I]Next sector ident\f[]
+.br
+0390  00 01 a9 f6 00 00 00 00  00 00 00 00 00 00 00 00  \f[I]\f[]
+.br
+03a0  00 00 00 00 \f[CB]a1\f[] f8 e5 e5  e5 e5 e5 e5 e5 e5 e5 e5  \f[I]Sector CHS 0,0,1 data\f[]
+.br
+03b0  e5 e5 e5 e5 e5 e5 e5 e5  e5 e5 e5 e5 e5 e5 e5 e5  \f[I]\f[]
+.br
+*
+.br
+05a0  e5 e5 e5 e5 e5 e5 08 51  00 00 00 00 4e 4e 4e 4e  \f[I]Sector CHS 0,0,1 ends\f[]
+.br
+.ft R
+
 .sh 1 "Hard Drive Controller Board"
 
-This hard drive controller is based on the Intel 8089 I/O processor.
-The 8089 processor is connected to on-board logic and sector buffer
-SRAM via a private bus, allowing them to be accessed without
-congesting the system bus. It is also connected to the main memory
+This hard drive controller supports two hard drives connected via
+ST-506 compatible interface.
+
+It is based around the Intel 8089 I/O processor.
+The 8089 is connected to on-board logic and sector buffer SRAM via
+a private bus, allowing them to be accessed without congesting
+the system bus. It is also connected to the main memory
 via the system bus, allowing for efficient DMA transfers of the
 sector data.
 
@@ -897,7 +1041,7 @@ section below.
 
 So far, I've observed two I/O programs for the controller board:
 one in the firmware and another on a diagnostic floppy. The Xenix
-operating system apparently uses yet another -- I haven't looked
+operating system apparently uses yet another\(emI haven't looked
 into that one yet.
 
 The following paragraphs give a quick overview of the two I/O
@@ -937,7 +1081,7 @@ SRAM to the data port.
 The number of sectors specified in IOPB determines how many transfers
 are done between the data port and the SRAM. The number of bytes
 transferred between SRAM and main memory is specified in IOPB directly.
-These two numbers are related -- main memory transfer needs to
+These two numbers are related\(emmain memory transfer needs to
 transfer sufficient number of bytes to include complete sector data.
 
 The I/O program listing\** follows.
