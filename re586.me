@@ -880,8 +880,8 @@ line left 1.7 down 0.3 dashed at SDB .sw
 move 0.3; right;
 
 box width 0.6 height 0.6 "\fC00h\fP" "14 bytes" "Sync"
-move 0.06
 box width 0.6 height 0.6 "\fCA1h\fP-" "Address" "Mark"
+move 0.06
 box width 0.6 height 0.6 "\fCFEh\fP" "Ident" "Field"
 box width 0.6 height 0.6 "\fCxxh\fP" "Cylinder" "Low"
 box width 0.6 height 0.6 "\fCxxh\fP" "Head &" "Cyl Hi"
@@ -895,15 +895,14 @@ move 0.06
 box width 0.6 height 0.6 "\fC4Eh\fP" "66 bytes" "Gap"
 
 down
-line right 0.48 down 0.3 dashed at DTB .se
+line right 0.42 down 0.3 dashed at DTB .se
 line left 4 down 0.3 dashed at DTB .sw
 move 0.3; right;
 
 box width 0.6 height 0.6 "\fC00h\fP" "14 bytes" "Sync"
-move 0.06
 box width 0.6 height 0.6 "\fCA1h\fP-" "Address" "Mark"
-move 0.06
 box width 0.6 height 0.6 "\fCF8h\fP" "Ident" "Field"
+move 0.06
 box width 1.8 height 0.6 "\fCxxh\fP" "512 bytes" "Data"
 box width 0.7 height 0.6 "\fCxxh\fP \fCxxh\fP" "2 bytes" "Data CRC"
 move 0.06
@@ -916,9 +915,10 @@ between the fifth and sixth data bit, even though both are zero.
 This is used to synchronize the decoding logic.
 
 The regular CRC-16-CCITT algorithm\** is used to calculate the content
-of the CRC fields. Note that the Ident CRC is calculated from all bytes
-including the \fCA1h\fP address mark, whereas the Data CRC calculation
-starts with the \fCF8h\fP identifiaction field.
+of the CRC fields. Note that the calculation of the Ident CRC starts from
+the \fCFEh\fP byte, Data CRC is calculated only for the data bytes, not
+the \fCF8h\fP identifiaction field. The \fCA1h\fP address mark is not
+included in either case.
 
 The gaps are quite a bit larger than usual. As a result, less useful
 data fits on a track\(em16 sectors of 512 bytes compared to more usual 17.
