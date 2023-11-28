@@ -1,6 +1,6 @@
 set -e
 set -x
 
-expand 8089/iop3268.asm |perl 8089/iopfmt.pl >8089/iop3268.me
-expand 8089/hd-test.asm |perl 8089/iopfmt.pl >8089/hd-test.me
+expand hdc/iop3268.asm |perl hdc/iopfmt.pl >hdc/iop3268.me
+expand hdc/hd-test.asm |perl hdc/iopfmt.pl >hdc/hd-test.me
 groff -P-pa4 -ep -t -me -Tpdf re586.me >re586.pdf
