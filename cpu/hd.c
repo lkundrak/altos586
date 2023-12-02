@@ -239,7 +239,6 @@ iop_in8 (struct i89 *iop, uint16_t addr)
 				if (cylinder == 4 && head == 1 && sector == 5)
 					stat2 |= 0x40;
 			}
-			break;
 		} else if (command == (0x01 | 0x08)) {
 			value = data_buf[data_ptr++];
 			if (data_ptr == 517) {
@@ -250,11 +249,11 @@ iop_in8 (struct i89 *iop, uint16_t addr)
 				command = 0x00;
 				data_ptr = 0;
 			}
-			break;
+		} else {
+			printf ("BAD DATA READ COMMAND {%x} DATA PTR %d\n", command, data_ptr);
+			value = 0x5a; //emu->max_instr = 0;
 		}
 
-		printf ("BAD DATA READ COMMAND {%x} DATA PTR %d\n", command, data_ptr);
-		emu->max_instr = 0;
 		break;
 	//case 0xffd2:
 	//	name = "Bad Read";
@@ -274,11 +273,13 @@ iop_in8 (struct i89 *iop, uint16_t addr)
 			name = "SRAM";
 			value = sbuf[addr];
 		} else {
+			printf ("BAD READ FROM ADDR 0x%04x\n", addr);
 			emu->max_instr = 0;
 		}
 	};
 
 	xprintf ("    IOP {%s} 0x%04x -> 0x%02x (%s)\n", __func__, addr, value, name);
+	printf ("    IOP {%s} 0x%04x -> 0x%02x (%s)\n", __func__, addr, value, name);
 	return value;
 }
 
@@ -472,7 +473,7 @@ hdc_iop(x86emu_t *emu, int ch)
 
 	static enum i89_flags flags =
 		I89_CHECK |
-#if 0
+#if 1
 		I89_PRINT_INSN |
 		I89_PRINT_ADDR |
 		I89_PRINT_DATA |
@@ -480,6 +481,8 @@ hdc_iop(x86emu_t *emu, int ch)
 		I89_EXEC;
 
 	i89_attn (&iop, ch);
+	if (flags & I89_PRINT_INSN)
+		printf("\n\nATTN:\n");
 	while (1) {
 		int ret;
 
@@ -784,12 +787,21 @@ check_iop(x86emu_t *emu, int ch, unsigned ch_cb, unsigned pb, unsigned ccw, int 
 			}
 		} else if (tp == 0x20000) {
 			// Use this for debugging the emulator
-			xprintf ("UNKNOWN 8089 CB%d.PB.TP AT 0x%04x (%04x:%04x):\n", ch, tp,
+			xprintf ("DUNKNOWN 8089 CB%d.PB.TP AT 0x%04x (%04x:%04x):\n", ch, tp,
 				x86emu_read_word(emu, pb + 2),
 				x86emu_read_word(emu, pb));
 			//printpb(stderr, tp, pb, ch_cb, ch);
 			if (run)
 				x86emu_stop (emu);
+		} else if (tp == 0x2600) {
+			if (0 && io_ch == 1) {
+				printf ("DEBUG 8089 CB%d.PB.TP AT 0x%04x (%04x:%04x):\n", ch, tp,
+					x86emu_read_word(emu, pb + 2),
+					x86emu_read_word(emu, pb));
+			}
+			if (run)
+				x86emu_stop (emu);
+			// Use this for debugging the emulator
 		} else {
 			printf ("UNKNOWN 8089 CB%d.PB.TP AT 0x%04x (%04x:%04x):\n", ch, tp,
 				x86emu_read_word(emu, pb + 2),
@@ -833,8 +845,8 @@ ch_attn(x86emu_t *emu, unsigned ch_cb, int ch)
 		check_iop(emu, ch, ch_cb, pb, ccw, 2, 1);
 	}
 	xprintf("=== PB After IOP:\n");
-	check_iop(emu, ch, ch_cb, pb, ccw, 2, 0);
 	check_iop(emu, ch, ch_cb, pb, ccw, 3, 0);
+	check_iop(emu, ch, ch_cb, pb, ccw, 4, 0);
 	xprintf("=== PB End.\n");
 }
 
