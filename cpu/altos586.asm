@@ -83,18 +83,18 @@ endstruc
 struc IOPB
 .MON_RSVD_1:		resw 1
 .MON_RSVD_2:		resw 1
-.DISK_OPCODE:		resb 1
-.DISK_DRIVE_NUM:	resb 1
-.DISK_TRACK:		resw 1
-.DISK_HEAD:		resb 1
-.DISK_SECTOR:		resb 1
-.DISK_SECTOR_COUNT:	resb 1
-.DISK_OP_STATUS:	resb 1
-.UNK:			resb 1
-.DISK_RETRIES:		resb 1
-.DISK_DMA_OFFSET:	resw 1
-.DISK_DMA_SEGMENT:	resw 1
-.DISK_SECTOR_LEN:	resw 1
+.OPCODE:		resb 1
+.DRIVE_NUM:		resb 1
+.TRACK:			resw 1
+.HEAD:			resb 1
+.SECTOR:		resb 1
+.SECTOR_COUNT:		resb 1
+.OP_STATUS:		resb 1
+.OP_STATUS_MASK:	resb 1
+.RETRIES:		resb 1
+.DMA_OFFSET:		resw 1
+.DMA_SEGMENT:		resw 1
+.SECTOR_LEN:		resw 1
 endstruc
 
 struc I8089_SCP
@@ -1021,7 +1021,7 @@ GOT_DISK_CODE:
 		mov	[BOOT_DISK_CODE], dl ; 1 = HDD, 2 = FDD
 
 		mov	dx, word [bp+DISK_NUMBER]
-		mov	[DISK_IOPB+IOPB.DISK_DRIVE_NUM], dl
+		mov	[DISK_IOPB+IOPB.DRIVE_NUM], dl
 
 		cmp	word [bp+DISK_NUMBER], 3
 		jbe	short USE_FLOPPY_OP
@@ -1031,10 +1031,10 @@ USE_FLOPPY_OP:
 		mov	dx, 20h	; Use 20h (Read) for Floppy. Why though?
 				; FDC_READ strips the bottom nibble off anyway
 GOT_OPCODE:
-		mov	byte [DISK_IOPB+IOPB.DISK_OPCODE], dl
+		mov	byte [DISK_IOPB+IOPB.OPCODE], dl
 
-		mov	word [DISK_IOPB+IOPB.DISK_TRACK], 0
-		mov	byte [DISK_IOPB+IOPB.DISK_HEAD], 0
+		mov	word [DISK_IOPB+IOPB.TRACK], 0
+		mov	byte [DISK_IOPB+IOPB.HEAD], 0
 		cmp	word [bp+DISK_NUMBER], 3
 		jbe	short loc_FE5D8
 		sub	dx, dx
@@ -1042,14 +1042,14 @@ GOT_OPCODE:
 loc_FE5D8:
 		mov	dx, 1
 loc_FE5DB:
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR], dl
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR_COUNT], 1
-		mov	byte [DISK_IOPB+IOPB.DISK_RETRIES], 10
-		mov	word [DISK_IOPB+IOPB.DISK_DMA_OFFSET], DISK_DATA_BUF
-		mov	word [DISK_IOPB+IOPB.DISK_DMA_SEGMENT], 0
-		mov	word [DISK_IOPB+IOPB.DISK_SECTOR_LEN], 512
+		mov	byte [DISK_IOPB+IOPB.SECTOR], dl
+		mov	byte [DISK_IOPB+IOPB.SECTOR_COUNT], 1
+		mov	byte [DISK_IOPB+IOPB.RETRIES], 10
+		mov	word [DISK_IOPB+IOPB.DMA_OFFSET], DISK_DATA_BUF
+		mov	word [DISK_IOPB+IOPB.DMA_SEGMENT], 0
+		mov	word [DISK_IOPB+IOPB.SECTOR_LEN], 512
 		call	DISK_READ
-		cmp	byte [DISK_IOPB+IOPB.DISK_OP_STATUS], 0
+		cmp	byte [DISK_IOPB+IOPB.OP_STATUS], 0
 		jz	short READ_GOOD
 BOOT_FAILED:
 		call	BOOT_FAILED_ERR
@@ -1069,8 +1069,8 @@ READ_GOOD:
 		mov	[SAVED_CPU_REGS+CPU_REGS.IP], di
 		mov	word [bp+var_6], 0
 		mov	di, [bp+var_A]
-		mov	word [DISK_IOPB+IOPB.DISK_DMA_SEGMENT], di
-		inc	byte [DISK_IOPB+IOPB.DISK_SECTOR]
+		mov	word [DISK_IOPB+IOPB.DMA_SEGMENT], di
+		inc	byte [DISK_IOPB+IOPB.SECTOR]
 		mov	al, [DISK_DATA_BUF+9]
 		cbw
 		cmp	ax, 2
@@ -1091,19 +1091,19 @@ BOOT_TYPE_0_loc_FE650:
 		add	sp, 6
 		mov	di, [bp+DEST]
 		add	di, 180h
-		mov	[DISK_IOPB+IOPB.DISK_DMA_OFFSET], di
+		mov	[DISK_IOPB+IOPB.DMA_OFFSET], di
 		cmp	word [bp+DISK_NUMBER], 3
 		ja	short loc_FE6E4
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR_COUNT], 8
+		mov	byte [DISK_IOPB+IOPB.SECTOR_COUNT], 8
 		call	FDC_READ
-		mov	al, [DISK_IOPB+IOPB.DISK_SECTOR_COUNT]
+		mov	al, [DISK_IOPB+IOPB.SECTOR_COUNT]
 		cbw
 		mov	cx, 9
 		shl	ax, cl
-		add	[DISK_IOPB+IOPB.DISK_DMA_OFFSET], ax
-		mov	byte [DISK_IOPB+IOPB.DISK_HEAD], 1
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR], 1
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR_COUNT], 9
+		add	[DISK_IOPB+IOPB.DMA_OFFSET], ax
+		mov	byte [DISK_IOPB+IOPB.HEAD], 1
+		mov	byte [DISK_IOPB+IOPB.SECTOR], 1
+		mov	byte [DISK_IOPB+IOPB.SECTOR_COUNT], 9
 		jmp	word BOOT_TYPE_PARAMS_SET ; hhh
 BOOT_TYPE_1_loc_FE69F:
 		mov	word [bp+LEN], 502
@@ -1111,12 +1111,12 @@ BOOT_TYPE_1_loc_FE69F:
 		ja	short loc_FE6C4
 		mov	di, 1
 		push	di
-		mov	al, [DISK_IOPB+IOPB.DISK_DRIVE_NUM]
+		mov	al, [DISK_IOPB+IOPB.DRIVE_NUM]
 		cbw
 		push	ax
 		call	FDC_SET_FLOPPY_PARAMS
 		add	sp, 4
-		mov	word [DISK_IOPB+IOPB.DISK_SECTOR_LEN], 256
+		mov	word [DISK_IOPB+IOPB.SECTOR_LEN], 256
 		mov	word [bp+LEN], 246
 loc_FE6C4:
 		mov	word [bp+SRC], DISK_DATA_BUF+10
@@ -1129,9 +1129,9 @@ loc_FE6C4:
 		add	sp, 6
 		mov	di, [bp+DEST]
 		add	di, [bp+LEN]
-		mov	[DISK_IOPB+IOPB.DISK_DMA_OFFSET], di
+		mov	[DISK_IOPB+IOPB.DMA_OFFSET], di
 loc_FE6E4:
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR_COUNT], 15
+		mov	byte [DISK_IOPB+IOPB.SECTOR_COUNT], 15
 		jmp	short BOOT_TYPE_PARAMS_SET
 BOOT_TYPE_2_loc_FE6EB:
 		mov	word [bp+SRC], DISK_DATA_BUF
@@ -1145,15 +1145,15 @@ BOOT_TYPE_2_loc_FE6EB:
 		add	sp, 6
 		mov	di, [bp+DEST]
 		add	di, 512
-		mov	[DISK_IOPB+IOPB.DISK_DMA_OFFSET], di
-		mov	byte [DISK_IOPB+IOPB.DISK_SECTOR_COUNT], 2
+		mov	[DISK_IOPB+IOPB.DMA_OFFSET], di
+		mov	byte [DISK_IOPB+IOPB.SECTOR_COUNT], 2
 		jmp	short BOOT_TYPE_PARAMS_SET
 off_FE714	dw BOOT_TYPE_0_loc_FE650
 		dw BOOT_TYPE_1_loc_FE69F
 		dw BOOT_TYPE_2_loc_FE6EB
 BOOT_TYPE_PARAMS_SET:
 		call	DISK_READ
-		cmp	byte [DISK_IOPB+IOPB.DISK_OP_STATUS], 0
+		cmp	byte [DISK_IOPB+IOPB.OP_STATUS], 0
 		jz	short BOOT_GOOD
 		jmp	BOOT_FAILED
 BOOT_GOOD:
@@ -1173,7 +1173,7 @@ BOOT_FAILED_ERR:
 		push	di
 		call	PUTS
 		add	sp, 2
-		mov	al, [DISK_IOPB+IOPB.DISK_OP_STATUS]
+		mov	al, [DISK_IOPB+IOPB.OP_STATUS]
 		cbw
 		push	ax
 		call	PRINTHEX8
@@ -1225,7 +1225,7 @@ COPY_IOPB_BYTE:
 		sub	word [ADDR_OFFSET], 20
 		call	DISK_READ
 		add	word [ADDR_OFFSET], 11
-		mov	al, [DISK_IOPB+IOPB.DISK_OP_STATUS]
+		mov	al, [DISK_IOPB+IOPB.OP_STATUS]
 		cbw
 		push	ax
 		call	MEM_WRITE8
@@ -1238,7 +1238,7 @@ DISK_READ:
 		mov	bp, sp
 		push	di
 		push	si
-		cmp	byte [DISK_IOPB+IOPB.DISK_DRIVE_NUM], 3
+		cmp	byte [DISK_IOPB+IOPB.DRIVE_NUM], 3
 		jle	short DO_FLOPPY
 		call	HDD_READ
 ALL_DONE:
@@ -1314,22 +1314,22 @@ FDC_READ:
 		push	di
 		push	si
 		sub	sp, 12h
-		mov	dl, [DISK_IOPB+IOPB.DISK_OPCODE]
+		mov	dl, [DISK_IOPB+IOPB.OPCODE]
 		and	dx, 0F0h
 		mov	di, dx
-		mov	dl, [DISK_IOPB+IOPB.DISK_RETRIES]
+		mov	dl, [DISK_IOPB+IOPB.RETRIES]
 		and	dx, 0Fh
 		add	di, dx
 		mov	dx, di
 		mov	[bp+COMMAND], dl
 		mov	byte [bp+STATUS], 0
-		mov	dl, [DISK_IOPB+IOPB.DISK_DRIVE_NUM]
+		mov	dl, [DISK_IOPB+IOPB.DRIVE_NUM]
 		mov	[bp+DRIVE_NUM], dl
-		mov	dx, [DISK_IOPB+IOPB.DISK_TRACK]
+		mov	dx, [DISK_IOPB+IOPB.TRACK]
 		mov	[bp+TRACK], dl
-		mov	dl, [DISK_IOPB+IOPB.DISK_HEAD]
+		mov	dl, [DISK_IOPB+IOPB.HEAD]
 		mov	[bp+HEAD], dl
-		mov	dl, [DISK_IOPB+IOPB.DISK_SECTOR]
+		mov	dl, [DISK_IOPB+IOPB.SECTOR]
 		mov	[bp+SECTOR], dl
 		mov	al, [bp+DRIVE_NUM]
 		cbw
@@ -1337,9 +1337,9 @@ FDC_READ:
 		shl	ax, cl
 		mov	bx, ax
 		mov	ax, (FDC_CHAN+FDC_REGS.PARAMS_1+2)[si]
-		cmp	ax, [DISK_IOPB+IOPB.DISK_SECTOR_LEN]
+		cmp	ax, [DISK_IOPB+IOPB.SECTOR_LEN]
 		jz	short loc_FE8AB
-		cmp	word [DISK_IOPB+IOPB.DISK_SECTOR_LEN], 256
+		cmp	word [DISK_IOPB+IOPB.SECTOR_LEN], 256
 		jz	short SECTOR_LEN_256
 		sub	di, di
 		push	di
@@ -1357,9 +1357,9 @@ loc_FE8A5:
 		call	FDC_SET_FLOPPY_PARAMS
 		add	sp, 4
 loc_FE8AB:
-		mov	di, [DISK_IOPB+IOPB.DISK_DMA_OFFSET]
+		mov	di, [DISK_IOPB+IOPB.DMA_OFFSET]
 		mov	[bp+DMA_OFFSET], di
-		mov	di, [DISK_IOPB+IOPB.DISK_DMA_SEGMENT]
+		mov	di, [DISK_IOPB+IOPB.DMA_SEGMENT]
 		mov	[bp+DMA_SEGMENT], di
 		mov	word [bp+SECTORS_READ], 0
 		jmp	loc_FE943
@@ -1404,19 +1404,19 @@ WAIT_FOR_QUEUE_DRAIN:
 		jnz	short WAIT_FOR_QUEUE_DRAIN
 		cmp	byte [bp+STATUS], 0
 		jnz	short FDC_READ_FINISHED ; Error?
-		mov	di, [DISK_IOPB+IOPB.DISK_SECTOR_LEN]
+		mov	di, [DISK_IOPB+IOPB.SECTOR_LEN]
 		add	[bp+DMA_OFFSET], di
 		inc	byte [bp+SECTOR]
 		inc	word [bp+SECTORS_READ]
 loc_FE943:
-		mov	al, [DISK_IOPB+IOPB.DISK_SECTOR_COUNT]
+		mov	al, [DISK_IOPB+IOPB.SECTOR_COUNT]
 		cbw
 		cmp	ax, [bp+SECTORS_READ]
 		jbe	short FDC_READ_FINISHED ; All done?
 		jmp	READ_SECTORS
 FDC_READ_FINISHED:
 		mov	dl, [bp+STATUS]
-		mov	[DISK_IOPB+IOPB.DISK_OP_STATUS], dl
+		mov	[DISK_IOPB+IOPB.OP_STATUS], dl
 		jmp	FUNCTION_RETURN
 
 ;------------------------------------------------------------------------
@@ -1813,30 +1813,30 @@ HDD_READ:
 		push	di
 		push	si
 		sub	sp, 6
-		mov	dl, [DISK_IOPB+IOPB.DISK_OPCODE]
+		mov	dl, [DISK_IOPB+IOPB.OPCODE]
 		mov	[DISK_IOPB+I8089_PB.HDD_OPCODE], dl
 		mov	byte [DISK_IOPB+I8089_PB.HDD_STATUS], 0FFh
-		mov	di, [DISK_IOPB+IOPB.DISK_TRACK]
+		mov	di, [DISK_IOPB+IOPB.TRACK]
 		mov	[DISK_IOPB+I8089_PB.HDD_CYLINDER], di
 		mov	word [bp+HDD_SECTORS_READ], 1
 		mov	dx, [bp+HDD_SECTORS_READ]
-		mov	al, [DISK_IOPB+IOPB.DISK_DRIVE_NUM]
+		mov	al, [DISK_IOPB+IOPB.DRIVE_NUM]
 		cbw
 		mov	cx, ax
 		shl	dx, cl
-		mov	al, [DISK_IOPB+IOPB.DISK_HEAD]
+		mov	al, [DISK_IOPB+IOPB.HEAD]
 		cbw
 		add	dx, ax
 		mov	[DISK_IOPB+I8089_PB.HDD_DRIVE_AND_HEAD], dl
-		mov	dl, [DISK_IOPB+IOPB.DISK_SECTOR]
+		mov	dl, [DISK_IOPB+IOPB.SECTOR]
 		mov	[DISK_IOPB+I8089_PB.HDD_START_SECTOR], dl
-		mov	di, [DISK_IOPB+IOPB.DISK_DMA_OFFSET]
+		mov	di, [DISK_IOPB+IOPB.DMA_OFFSET]
 		mov	[DISK_IOPB+I8089_PB.HDD_DMA_OFFSET], di
-		mov	di, [DISK_IOPB+IOPB.DISK_DMA_SEGMENT]
+		mov	di, [DISK_IOPB+IOPB.DMA_SEGMENT]
 		mov	[DISK_IOPB+I8089_PB.HDD_DMA_SEGMENT], di
-		mov	di, [DISK_IOPB+IOPB.DISK_SECTOR_LEN]
+		mov	di, [DISK_IOPB+IOPB.SECTOR_LEN]
 		mov	[DISK_IOPB+I8089_PB.HDD_BYTE_COUNT], di
-		mov	dl, [DISK_IOPB+IOPB.DISK_RETRIES]
+		mov	dl, [DISK_IOPB+IOPB.RETRIES]
 		mov	[bp+HDD_RETRIES], dl
 		cmp	byte [bp+HDD_RETRIES], 0
 		jg	short RETRIES_NOW_NONZERO
@@ -1859,17 +1859,17 @@ loc_FED30:
 		cmp	ax, [bp+RETRIES_DONE]
 		jnb	short loc_FED23
 NO_LONGER_BUSY:
-		mov	di, [DISK_IOPB+IOPB.DISK_SECTOR_LEN]
+		mov	di, [DISK_IOPB+IOPB.SECTOR_LEN]
 		add	[IOP_BLOCK+I8089_PB.HDD_DMA_OFFSET], di
 		inc	byte [IOP_BLOCK+I8089_PB.HDD_START_SECTOR]
 		inc	word [bp+HDD_SECTORS_READ]
 loc_FED48:
-		mov	al, [DISK_IOPB+IOPB.DISK_SECTOR_COUNT]
+		mov	al, [DISK_IOPB+IOPB.SECTOR_COUNT]
 		cbw
 		cmp	ax, [bp+HDD_SECTORS_READ]
 		ja	short HDD_READ_SECTORS
 		mov	dl, [IOP_BLOCK+I8089_PB.HDD_STATUS]
-		mov	[DISK_IOPB+IOPB.DISK_OP_STATUS], dl
+		mov	[DISK_IOPB+IOPB.OP_STATUS], dl
 		jmp	FUNCTION_RETURN
 
 ;------------------------------------------------------------------------
@@ -3979,18 +3979,18 @@ iend
 DISK_IOPB istruc IOPB
 	at IOPB.MON_RSVD_1,		dw ?
 	at IOPB.MON_RSVD_2,		dw ?
-	at IOPB.DISK_OPCODE,		db ?
-	at IOPB.DISK_DRIVE_NUM,		db ?
-	at IOPB.DISK_TRACK,		dw ?
-	at IOPB.DISK_HEAD,		db ?
-	at IOPB.DISK_SECTOR,		db ?
-	at IOPB.DISK_SECTOR_COUNT,	db ?
-	at IOPB.DISK_OP_STATUS,		db ?
-	at IOPB.UNK,			db ?
-	at IOPB.DISK_RETRIES,		db ?
-	at IOPB.DISK_DMA_OFFSET,	dw ?
-	at IOPB.DISK_DMA_SEGMENT,	dw ?
-	at IOPB.DISK_SECTOR_LEN,	dw ?
+	at IOPB.OPCODE,			db ?
+	at IOPB.DRIVE_NUM,		db ?
+	at IOPB.TRACK,			dw ?
+	at IOPB.HEAD,			db ?
+	at IOPB.SECTOR,			db ?
+	at IOPB.SECTOR_COUNT,		db ?
+	at IOPB.OP_STATUS,		db ?
+	at IOPB.OP_STATUS_MASK,		db ?
+	at IOPB.RETRIES,		db ?
+	at IOPB.DMA_OFFSET,		dw ?
+	at IOPB.DMA_SEGMENT,		dw ?
+	at IOPB.SECTOR_LEN,		dw ?
 iend
 			db ?
 GETCHAR_ECHO_BUF	dw ?
