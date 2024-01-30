@@ -657,13 +657,16 @@ loc_FE311:
 		call	SIO_COMMAND_WHEN_READY ; AL=command
 		add	si, SIO_REGS_size
 		loop	loc_FE311
+
+%ifndef HACKS
 		mov	cx, 25		; 25 newlines
-					; 99 luftbaloons
-loc_FE31D:
+ANOTHER_CRLF:
 		push	cx
 		call	PRINT_CRLF
 		pop	cx
-		loop	loc_FE31D
+		loop	ANOTHER_CRLF
+%endif
+
 		cmp	byte [POST_RESULT], 10h
 		ja	short POST_DONE
 		mov	bl, [POST_RESULT]
