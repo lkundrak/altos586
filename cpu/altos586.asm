@@ -16,8 +16,13 @@
 ; just that. The SYSCALL_ENTRY still needs to stay at FE00:0000 -- code	:
 ; could be added or moved before that (see .code_low section).		:
 ;------------------------------------------------------------------------
-;%define ROMLEN 04000h	; 16K image
-%define ROMLEN 02000h	; 8K image
+%ifndef ROMLEN
+  %ifdef ACS486_COMPAT
+    %define ROMLEN 04000h	; 16K image
+  %else
+    %define ROMLEN 02000h	; 8K image
+  %endif
+%endif
 %define ROMSEG 10000h-(ROMLEN/16)
 
 ; Make sure we don't accidentally use any of the newer opcodes
@@ -184,6 +189,10 @@ times 0*4-($-$$)	db ?
 INT0_OFF		dw ?
 INT0_SEG		dw ?
 
+times 20*4-($-$$)	db ?
+INT20_ACS486_CALL_OFF	dw ?
+INT20_ACS486_CALL_SEG	dw ?
+
 times 33*4-($-$$)	db ?
 INT33_TIMER_OFF		dw ?
 INT33_TIMER_SEG		dw ?
@@ -210,6 +219,11 @@ iend
 ; section.								:
 ;========================================================================
 section .code_low align=1
+
+
+%ifdef ACS486_COMPAT
+%include "altos486-compat.inc"
+%endif
 
 
 ;========================================================================
@@ -499,6 +513,13 @@ INSTALL_DEFAULT_IRQS:
 		inc	bx
 		inc	bx
 		loop	INSTALL_DEFAULT_IRQS
+
+%ifdef ACS486_COMPAT
+		lea	dx, [INT20_ACS486_CALL]
+		mov	word [INT20_ACS486_CALL_OFF], dx
+		mov	word [INT20_ACS486_CALL_SEG], cs
+%endif
+
 		lea	dx, [TIMER_INT]
 		mov	word [INT33_TIMER_OFF], dx
 		mov	word [INT33_TIMER_SEG], cs
@@ -3889,9 +3910,20 @@ HEX_byte_4F8		db 1
 
 STR_VERSION_BANNER	db "				 ",0Ah
 			db "Monitor Version V1.3"
+%ifdef ACS486_COMPAT
+			db " +acs486sys"
+%endif
 %ifdef HACKS
-			db " +hacks",0Ah
-			db "<https://github.com/lkundrak/altos586>",0Ah
+			db " +hacks"
+%endif
+%ifdef HACKS
+	%define PATCHED
+%endif
+%ifdef ACS486_COMPAT
+	%define PATCHED
+%endif
+%ifdef PATCHED
+			db 0Ah,"<https://github.com/lkundrak/altos586>",0Ah
 %endif
 			db 0
 STR_POST_GOOD		db 0Ah,"PASSED POWER-UP TEST",0
