@@ -20,6 +20,9 @@
 %define ROMLEN 02000h	; 8K image
 %define ROMSEG 10000h-(ROMLEN/16)
 
+; Make sure we don't accidentally use any of the newer opcodes
+CPU 8086
+
 ; I/O controller command register
 IOC_BUSY		equ 80h
 IOC_ENABLE		equ 01h
@@ -155,6 +158,7 @@ struc CPU_REGS
 .CS:			resw 1
 endstruc
 
+; 8086 I/O map
 Z80_CHAN_ATTN		equ 00050h	; Z80A I/O Processor Chan att.
 CONTROL_BITS		equ 00058h	; Control Bits Port - Write Only.
 MMU_ERROR		equ 00060h	; MMU - Error Address 2 - Read Only.
