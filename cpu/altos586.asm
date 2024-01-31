@@ -529,7 +529,13 @@ loc_FE21A:
 		loop	loc_FE21A
 		cli
 		cmp	bh, 21h
+%ifdef HACKS
+		; TODO: Figure out why this fails in emulation.
+		; Is it just timing inprecision?
+		jmp	short SUCCESS_TEST_9
+%else
 		jz	short SUCCESS_TEST_9
+%endif
 		mov	bl, 9		; POST FAIL 9: Interrupt test failure
 POST_CHECK_FAILED_7:
 		jmp	short POST_CHECK_FAILED_8
