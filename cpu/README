@@ -96,6 +96,26 @@ encoding, such as converting jumps to short ones when possible or
 elimination of zero offsets.
 
 
+Patched Monitor Builds
+======================
+
+On numerous occassions I needed to make modifications to the monitor.
+Given the board actually supports 16K (2 x 8K) ROM, there's a lot of
+play room.
+
+Among other things, I've found it convenient to automate the floppy bootup
+and add support for system calls mechanism (unlike one that's described
+in Altos 486 documentation) utilized by CCP/M-86 floppy I've got that
+monitor versions known to me support.
+
+I've extended the reconstructed source with conditionally compiled
+chunks of code that implement the above. Here's how it's built:
+
+  yasm -DACS486_COMPAT -DHACKS -o altos586h.bin altos586.asm
+  perl cksum.pl altos586h.bin >altos586h.rom
+  perl split.pl altos586h-hi.rom altos586h-lo.rom altos586h.rom
+
+
 Disassembly
 ===========
 
