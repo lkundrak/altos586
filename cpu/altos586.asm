@@ -3877,8 +3877,14 @@ db 22h, 22h, 22h, 22h, 22h, 22h
 
 INIT_REG_PTR		dd 1FFF000Ch
 HEX_byte_4F8		db 1
-STR_VERSION_BANNER	db "                             ",0Ah
-			db "Monitor Version V1.3",0
+
+STR_VERSION_BANNER	db "				 ",0Ah
+			db "Monitor Version V1.3"
+%ifdef HACKS
+			db " +hacks",0Ah
+			db "<https://github.com/lkundrak/altos586>",0Ah
+%endif
+			db 0
 STR_POST_GOOD		db 0Ah,"PASSED POWER-UP TEST",0
 STR_POST_FAILED		db 0Ah,"FAILED POWER-UP TEST "
 HEX_BUF_FOR_POST_NUMBER	db    0
