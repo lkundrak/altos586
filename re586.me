@@ -1,11 +1,11 @@
 .\" SPDX-License-Identifier: GFDL-1.1-no-invariants-or-later
-.\" groff -P-pa4 -pe -t -me -Tpdf re586.me >re586.pdf
+.\" groff -U -P-pa4 -pe -t -me -Tpdf re586.me >re586.pdf
 .he 'Notes on the Altos 586 Computer''%'
 .+c
 .(l C
 .b "Notes on the Altos 586 Computer"
 .sp  2
-Work in progress, November 2023
+Work in progress, April 2024
 by Lubomir Rintel
 .)l
 .sp  2
@@ -150,10 +150,135 @@ _
 34 | PB7 | Input     | PIT ? OUT2 (Pin 17)
 .TE
 
-.bp
-.sh 1 "Floppy Interface"
 
-.sh 2 "Geometry and Format"
+
+
+
+
+.bp
+.sh 1 "Channel Control Block"
+
+This chapter is internet to supplement
+.i "Appendix A, 586T/986T Serial Controller"
+from the manual. It describes the exact addresses and sizes of
+individual registers in the 586T's Channel Control Block (CCB).
+
+The manual is also not too clear about the offsets of various register blocks.
+Also, while the interface to the I/O processor is very similar to 586T, there
+are differences. The most notable difference is the addition of the Floppy Channel.
+This chapter attempts to remedy both issues by listing all CCB registers present
+on 586 along with their locations and type.
+
+The CCB is structured as follows:
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|lb|lbx
+l|l|l.
+Offset  | Size          | Register Name
++00h    | BYTE[6]       | System Registers
++06h    | BYTE[22]      | Serial Channel 0 Registers
++1Ch    | BYTE[22]      | Serial Channel 1 Registers
++32h    | BYTE[22]      | Serial Channel 2 Registers
++48h    | BYTE[22]      | Serial Channel 3 Registers
++5Eh    | BYTE[22]      | Serial Channel 4 Registers
++74h    | BYTE[22]      | Serial Channel 5 Registers
++8Ah    | BYTE[74]      | Floppy Disk Control Registers
++D4h    | BYTE[8]       | Real Time Clock Registers
+.TE
+
+Layouts of individual channels are described below.
+
+.sh 2 "System Registers"
+
+The controller Z80 loops idle until it's sent a NMI writing to the 8086 port
+FF00h. On bootup, it writes
+.i "Firmware Version"
+fetches a three-byte pointer to the CCB from address
+1FFFCh in main memory.
+
+From then on, Z80 reads the
+.i "New Command"
+register whenever idle and if it
+detects a new value, it checks all enabled channels for new commands.
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|lb|lbx
+l|l|l.
+Offset  | Size          | Register Name
++00h    | BYTE          | Firmware Version
++01h    | BYTE          | System Command
++02h    | BYTE          | System Status
++03h    | WORD          | Interrupt Vector
++05h    | BYTE          | New Command
+.TE
+
+.bp
+.sh 2 "Serial Channel Registers"
+
+This block is repeated six times: once for each serial port.
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|lb|lbx
+l|l|l.
+Offset  | Size          | Register Name
++00h    | WORD          | Channel Parameter
++02h    | WORD          | Channel Status
++04h    | BYTE          | Channel Command
++05h    | BYTE[3]       | Transmit Data Buffer Address
++08h    | WORD          | Transmit Data Buffer Length
++0Ah    | BYTE[3]       | Receive Data Buffer Address (only in buffered mode)
++0Dh    | WORD          | Receive Data Buffer Length (only in buffered mode)
++0Fh    | WORD          | Receive Buffer Input Pointer (only in buffered mode)
++11h    | WORD          | Receive Buffer Output Pointer (only in buffered mode)
++12h    | BYTE          | TTY Receive (only in tty mode)
++13h    | WORD          | Selectable Rate
++15h    | BYTE          | Reserved
+.TE
+
+.sh 2 "Floppy Disk Control Registers"
+
+This is not documented in the 586T manual. Instead, consult next chapter
+for details.
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|lb|lbx
+l|l|l.
+Offset  | Size          | Register Name
++00h    | BYTE          | Floppy Command
++01h    | BYTE          | Floppy Status
++02h    | BYTE[3]       | Next Floppy Command Pointer
++05h    | BYTE          | Floppy Command Queue Size
++06h    | BYTE          | Last Floppy Command Index
++07h    | BYTE          | Next Floppy Command Index
++08h    | BYTE          | Unused
++09h    | BYTE          | Unused
++0Ah    | BYTE[32]      | Floppy 1 Parameters
++B4h    | BYTE[32]      | Floppy 2 Parameters
+.TE
+
+.bp
+.sh 2 "Real Time Clock Registers"
+
+.TS
+doublebox nospaces allbox tab(|);
+lb|lb|lbx
+l|l|l.
+Offset  | Size          | Register Name
++00h    | BYTE          | Control
++01h    | BYTE          | Seconds
++02h    | BYTE          | Minutes
++03h    | BYTE          | Hours
++04h    | BYTE          | Day
++05h    | BYTE          | Date
++06h    | BYTE          | Month
++07h    | BYTE          | Year
+.TE
+
+.sh 1 "Floppy Disks"
 
 The Altos 586 computer uses 5\[14]" diskettes in a drive with following
 parameters:
@@ -187,6 +312,7 @@ connector pinout (see below).
 The regular 1.44 MB floppies can usually be used with DD format, but
 the density select window needs to be covered with a piece of opaque tape.
 
+.bp
 .sh 2 "Floppy Connector Pinout"
 
 The floppy connector is not PC compatible and therefore usual PC floppy drives can't be
@@ -194,7 +320,7 @@ used without modifications. It uses straight ribbon cables, not the PC-style one
 
 The pinout (and drive geometry) is fairly close to to what Commodore Amiga computers use.
 There seems to be a plenty of tutorials on modifying PC drives for Amiga on the Web.
-The same modificaqtions should work for the Altos 586.
+The same modifications should work for the Altos 586.
 
 .TS
 doublebox nospaces allbox tab(|);
@@ -222,87 +348,43 @@ GND      |   1 |   2 | Output    | Motor Enable     |
          |  33 |  34 | Input     | Drive Ready      |
 .TE
 
-
 .bp
-.sh 1 "Firmware Interface"
+.sh 2 "Floppy Drive I/O Processor Interface"
 
-The firmware interface is unsurprisingly very similar to 586T. A notable
-difference is addition of the Floppy Channel, described below.
-
-The
-.i "586T/986T System Reference Manual"
-is not too clear about the
-offset of various register blocks though they can be for the most
-part inferred from their respective lengths, since they immediately
-follow each other.
-
-The layout of register blocks on the 586 is somewhat different
-due to the inclusion of the
-.i "Floppy Drive Interface Registers"
-block before the
-.i "Time of Day Registers". The following table contains the
-offsets of each block. It is incidentally also the offset of
-each command register the firmware looks at, since each
-block starts with a command register.
-
-.TS
-doublebox nospaces allbox tab(|);
-lb|lbx
-l|l.
-Offset | Description
-0Ah    | Communication Channel Registers (Port 1)
-20h    | Communication Channel Registers (Port 2)
-36h    | Communication Channel Registers (Port 3)
-4Ch    | Communication Channel Registers (Port 4)
-62h    | Communication Channel Registers (Port 5)
-78h    | Communication Channel Registers (Port 6)
-8Ah    | Floppy Drive Interface Registers
-D4h    | Time of Day Registers
-.TE
-
-The
-.i "Communication Channel Registers"
-and
-.i "Time of Day Registers"
-are described in the
-.i "586T/986T System Reference Manual" , on pages A-7 and A-12
-respectively. The rest of this section deals with the
-Floppy interface exclusively.
-
-.sh 2 "Floppy Drive Interface Registers"
-
-This structure is present at offset 8Ah from the command control
-block (CCB). Not all members are used by all commands.
+The CCB (see previous chapter) is used to exchange floppy drive commands,
+status, and data between the host and the I/O processor. The floppy interface
+registers are present at offset 8Ah from the start of the
+Command Control Block (CCB). Not all members are used by all commands.
 
 .TS
 doublebox nospaces allbox tab(|);
 lb|lb|lb|lbx
 l|l|l|l.
-Offset          | Size          | Description                   | Typical Value
+Offset  | Size          | Description                   | Typical Value
 _
-+00h            | BYTE          | Command                       | 87h, 88h, .\~.\~.
-+01h            | BYTE          | Status                        | 00h, 48h, 40h, C0h, .\~.\~.
-+02h \[en] +04h | BYTE[3]       | Next Floppy Command Pointer   | T{
++00h    | BYTE          | Floppy Command                | 87h, 88h, .\~.\~.
++01h    | BYTE          | Floppy Status                 | 00h, 48h, 40h, C0h, .\~.\~.
++02h    | BYTE[3]       | Next Floppy Command Pointer   | T{
 Pointer to
 .i "Floppy Command Queue"
 entry
 T}
-+05h            | BYTE          | Floppy Command Queue Size     | 02h
-+06h            | BYTE          | Last Floppy Command Index     | 01h
-+07h            | BYTE          | Next Floppy Command Index     | 00h
-+08h            | BYTE          | Unused                        | 00h
-+09h            | BYTE          | Unused                        | 00h
-+0Ah \[en] +B3h | BYTE[32]      | Floppy 1 Parameters           | T{
++05h    | BYTE          | Floppy Command Queue Size     | 02h
++06h    | BYTE          | Last Floppy Command Index     | 01h
++07h    | BYTE          | Next Floppy Command Index     | 00h
++08h    | BYTE          | Unused                        | 00h
++09h    | BYTE          | Unused                        | 00h
++0Ah    | BYTE[32]      | Floppy 1 Parameters           | T{
 .i "Floppy Parameters"
 T}
-+B4h \[en] +D3h | BYTE[32]      | Floppy 2 Parameters           | T{
++B4h    | BYTE[32]      | Floppy 2 Parameters           | T{
 .i "Floppy Parameters"
 T}
 .TE
 
 .sh 2 "Floppy Drive Interface Commands"
 
-There factory software has been seen issuing three different command,
+There factory software has been seen issuing three different commands,
 with two of them having known function:
 
 .TS
@@ -312,7 +394,7 @@ l|l.
 Command | Description
 87h     | Set Floppy Drive Parameters
 88h     | Submit Floppy Command Queue
-8fh     | Unknown
+8Fh     | Unknown
 .TE
 
 As with the other command blocks, the most significant bit indicates
@@ -339,10 +421,9 @@ The main processor firmware calls this command on startup.
 
 The
 .i "Submit Floppy Command Queue"
-command submits the
+command starts the
 .i "Floppy Command Queue"
-for processing. Said queue is in fact a ring buffer whose entries
-are the addresses of
+processing. The queue a ring buffer whose entries are the addresses of
 .i "Floppy Disk Interface Parameter Block"
 structures (described below).
 
@@ -354,7 +435,7 @@ entry index is equal to the last entry index.
 
 Note that the I/O processor modifies the
 .i "Next Floppy Command Index" register
-when it finishes handlin an entry, but keeps the value in
+when it finishes handling an entry, but keeps the value in
 .i "Next Floppy Command Pointer"
 unchanged, while still using it to calculate the address of
 the next entry to process. When you submit another batch of commands When you submit another batch of commands
@@ -367,7 +448,6 @@ set by the
 .i "Set Floppy Drive Parameters"
 previously.
 
-.bp
 .sh 2 "Floppy Parameters"
 
 Used to issue I/O commands, not used by
@@ -383,7 +463,7 @@ _
 +00h                    | WORD           | Unknown               | 0200h
 +02h                    | WORD           | Sector size           | 0200h
 +04h                    | BYTE           | Unknown               | 06h
-+05h \[en] +1fh         | BYTE[.\~.\~.]  | Unknown/Filler (00h)  | 00h .\~.\~.
++05h \[en] +1Fh         | BYTE[.\~.\~.]  | Unknown/Filler (00h)  | 00h .\~.\~.
 .TE
 
 .sh 2 "Floppy Command Queue"
